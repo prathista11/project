@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 
-const API_KEY = "d45bfkpr01qsugt9jim0d45bfkpr01qsugt9jimg";
+// const API_KEY = "..."; // no longer needed because we now call the backend
 const STOCKS = ["AAPL", "GOOGL", "MSFT", "AMZN", "TSLA", "META", "NFLX", "NVDA", "IBM", "INTC"];
 
 function StockPage() {
@@ -19,34 +19,13 @@ function StockPage() {
 
   const navigate = useNavigate();
 
-  // ✅ Fetch Data
+  // ✅ Fetch Data (unchanged interval, now via backend)
   useEffect(() => {
     async function fetchStockData() {
       try {
-        const results = await Promise.all(
-          STOCKS.map(async (symbol) => {
-            const [quote, profile, metrics] = await Promise.all([
-              axios.get(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${API_KEY}`),
-              axios.get(`https://finnhub.io/api/v1/stock/profile2?symbol=${symbol}&token=${API_KEY}`),
-              axios.get(`https://finnhub.io/api/v1/stock/metric?symbol=${symbol}&metric=all&token=${API_KEY}`),
-            ]);
-            return {
-              symbol,
-              name: profile.data.name || "N/A",
-              current: quote.data.c,
-              change: quote.data.d,
-              percent: quote.data.dp,
-              high: quote.data.h,
-              low: quote.data.l,
-              volume: metrics.data.metric["10DayAverageTradingVolume"] || "N/A",
-              marketCap: metrics.data.metric.marketCapitalization
-                ? metrics.data.metric.marketCapitalization.toFixed(2)
-                : "N/A",
-              pe: metrics.data.metric.peNormalizedAnnual || "N/A",
-            };
-          })
-        );
-        setStocks(results);
+        // call backend aggregation endpoint
+        const res = await axios.get(`/api/quotes?symbols=${STOCKS.join(",")}`);
+        setStocks(res.data);
         setLoading(false);
         setLastUpdated(Date.now());
       } catch (err) {
@@ -55,7 +34,7 @@ function StockPage() {
     }
 
     fetchStockData();
-    const interval = setInterval(fetchStockData, 60000);
+    const interval = setInterval(fetchStockData, 60000); // keep 60s
     return () => clearInterval(interval);
   }, []);
 
@@ -96,6 +75,7 @@ function StockPage() {
     setShowModal(true);
   }
 
+  // ✅ Confirm buy — now posts to backend; keeps localStorage highlight behavior
   function confirmBuy() {
     const qty = parseInt(quantity, 10);
     if (!qty || qty <= 0) {
@@ -103,26 +83,43 @@ function StockPage() {
       return;
     }
 
-    const existingPortfolio = JSON.parse(localStorage.getItem("portfolio")) || [];
-    const existingStock = existingPortfolio.find((item) => item.symbol === selectedStock.symbol);
+    // send to backend portfolio
+    const payload = {
+      symbol: selectedStock.symbol,
+      companyName: selectedStock.name,
+      price: selectedStock.current,
+      quantity: qty,
+    };
 
-    if (existingStock) {
-      existingStock.quantity += qty;
-    } else {
-      existingPortfolio.push({
-        symbol: selectedStock.symbol,
-        companyName: selectedStock.name,
-        price: selectedStock.current,
-        quantity: qty,
+    axios
+      .post("/api/portfolio", payload)
+      .then(() => {
+        // maintain your existing highlight logic by also updating localStorage
+        const existingPortfolio = JSON.parse(localStorage.getItem("portfolio")) || [];
+        const existingStock = existingPortfolio.find((item) => item.symbol === selectedStock.symbol);
+
+        if (existingStock) {
+          existingStock.quantity += qty;
+        } else {
+          existingPortfolio.push({
+            symbol: selectedStock.symbol,
+            companyName: selectedStock.name,
+            price: selectedStock.current,
+            quantity: qty,
+          });
+        }
+        localStorage.setItem("portfolio", JSON.stringify(existingPortfolio));
+
+        alert(`${qty} shares of ${selectedStock.symbol} added to portfolio!`);
+        setShowModal(false);
+      })
+      .catch((err) => {
+        console.error(err);
+        alert("Failed to add to portfolio.");
       });
-    }
-
-    localStorage.setItem("portfolio", JSON.stringify(existingPortfolio));
-    alert(`${qty} shares of ${selectedStock.symbol} added to portfolio!`);
-    setShowModal(false);
   }
 
-  // ✅ Highlight bought
+  // ✅ Highlight bought (unchanged)
   const portfolio = JSON.parse(localStorage.getItem("portfolio")) || [];
   const boughtSymbols = portfolio.map((s) => s.symbol);
 
@@ -166,9 +163,7 @@ function StockPage() {
       <div style={styles.container}>
         <h1 style={styles.title}>💹 Global Stock Market Dashboard</h1>
         <p style={styles.subtitle}>Live Data | Auto-refresh every 1 minute</p>
-        {lastUpdated && (
-          <p style={styles.lastUpdated}>🔄 Last updated: {timeAgo}</p>
-        )}
+        {lastUpdated && <p style={styles.lastUpdated}>🔄 Last updated: {timeAgo}</p>}
 
         <div style={styles.searchBarContainer}>
           <input
@@ -277,10 +272,7 @@ function StockPage() {
                   <td style={styles.td}>{s.marketCap !== "N/A" ? s.marketCap + "B" : "—"}</td>
                   <td style={styles.td}>{s.pe !== "N/A" ? s.pe.toFixed(2) : "—"}</td>
                   <td style={styles.td}>
-                    <button
-                      style={styles.buyBtn}
-                      onClick={() => handleBuyClick(s)}
-                    >
+                    <button style={styles.buyBtn} onClick={() => handleBuyClick(s)}>
                       {boughtSymbols.includes(s.symbol) ? "buy again" : "Buy"}
                     </button>
                   </td>
@@ -321,12 +313,12 @@ function StockPage() {
 
 const styles = {
   page: {
-  minHeight: "100vh",
-  background: "linear-gradient(135deg, #f3f3f3ff 0%, ffffffff(0, 0%, 100%, 1.00) 100%)",
-  padding: "0 20px 40px 20px", // ⬅ removed top padding, kept side & bottom
-  marginTop: "0",
-  fontFamily: "'Poppins', sans-serif",
-},
+    minHeight: "100vh",
+    background: "linear-gradient(135deg, #f3f3f3ff 0%, ffffffff(0, 0%, 100%, 1.00) 100%)",
+    padding: "0 20px 40px 20px",
+    marginTop: "0",
+    fontFamily: "'Poppins', sans-serif",
+  },
   container: {
     maxWidth: "1200px",
     margin: "0 auto",
