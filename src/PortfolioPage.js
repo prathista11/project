@@ -3,58 +3,67 @@ import React, { useEffect, useState } from "react";
 function PortfolioPage() {
   const [portfolio, setPortfolio] = useState([]);
 
+  // ✅ Load portfolio from backend and refresh prices via backend proxy
   useEffect(() => {
-    const savedPortfolio = JSON.parse(localStorage.getItem("portfolio")) || [];
-    setPortfolio(savedPortfolio);
+    const fetchPortfolio = async () => {
+      try {
+        const res = await fetch("/api/portfolio");
+        const savedPortfolio = await res.json();
 
-    // Fetch live prices for each stock
-    const fetchLiveData = async () => {
-      const updated = await Promise.all(
-        savedPortfolio.map(async (stock) => {
-          const res = await fetch(
-            `https://finnhub.io/api/v1/quote?symbol=${stock.symbol}&token=YOUR_API_KEY`
-          );
-          const data = await res.json();
-          return {
-            ...stock,
-            price: data.c, // current price
-          };
-        })
-      );
-      setPortfolio(updated);
+        // fetch live prices for each entry via backend
+        const updated = await Promise.all(
+          savedPortfolio.map(async (stock) => {
+            const r = await fetch(`/api/stock/${stock.symbol}`);
+            const data = await r.json();
+            return {
+              ...stock,
+              price: data.quote?.c ?? stock.price ?? 0,
+            };
+          })
+        );
+        setPortfolio(updated);
+      } catch (err) {
+        console.error("Failed to load portfolio", err);
+      }
     };
 
-    fetchLiveData();
-
-    // Optional: Refresh every 15 seconds
-    const interval = setInterval(fetchLiveData, 15000);
+    fetchPortfolio();
+    // ⏱ keep your 15s refresh
+    const interval = setInterval(fetchPortfolio, 15000);
     return () => clearInterval(interval);
   }, []);
 
-  const handleSell = (symbol) => {
-    const updatedPortfolio = portfolio.filter(stock => stock.symbol !== symbol);
-    setPortfolio(updatedPortfolio);
-    localStorage.setItem("portfolio", JSON.stringify(updatedPortfolio));
+  // ✅ Sell via backend and update table
+  const handleSell = async (symbol) => {
+    try {
+      const res = await fetch(`/api/portfolio/${symbol}`, { method: "DELETE" });
+      const updated = await res.json();
+      setPortfolio(updated);
+    } catch (err) {
+      console.error("Failed to sell", err);
+    }
   };
 
   return (
     <div style={{ padding: "20px", backgroundColor: "#f2f5f9", minHeight: "100vh" }}>
       <h1 style={{ textAlign: "center", color: "#333" }}>📊 My Portfolio (Live)</h1>
-      
+
       {portfolio.length === 0 ? (
         <p style={{ textAlign: "center", color: "#555" }}>
           No stocks yet! Go buy some from the Stock page 🚀
         </p>
       ) : (
-        <table style={{
-          width: "90%",
-          margin: "20px auto",
-          borderCollapse: "collapse",
-          boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-          background: "white",
-          borderRadius: "12px",
-          overflow: "hidden"
-        }}>
+        <table
+          style={{
+            width: "90%",
+            margin: "20px auto",
+            borderCollapse: "collapse",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+            background: "white",
+            borderRadius: "12px",
+            overflow: "hidden",
+          }}
+        >
           <thead style={{ backgroundColor: "#1e90ff", color: "white" }}>
             <tr>
               <th style={{ padding: "10px" }}>Company</th>
@@ -72,7 +81,7 @@ function PortfolioPage() {
                 <td>{stock.symbol}</td>
                 <td>${stock.price}</td>
                 <td>{stock.quantity}</td>
-                <td>${(stock.price * stock.quantity).toFixed(2)}</td>
+                <td>${(Number(stock.price || 0) * Number(stock.quantity || 0)).toFixed(2)}</td>
                 <td>
                   <button
                     onClick={() => handleSell(stock.symbol)}
@@ -82,7 +91,7 @@ function PortfolioPage() {
                       padding: "6px 10px",
                       color: "white",
                       borderRadius: "6px",
-                      cursor: "pointer"
+                      cursor: "pointer",
                     }}
                   >
                     Sell
