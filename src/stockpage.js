@@ -1,10 +1,22 @@
+// src/StockPage.js
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import "./index.css";
+import AlertBox from "./AlertBox"; // <-- custom black alert component
 
-// const API_KEY = "..."; // no longer needed because we now call the backend
-const STOCKS = ["AAPL", "GOOGL", "MSFT", "AMZN", "TSLA", "META", "NFLX", "NVDA", "IBM", "INTC"];
+const STOCKS = [
+  "AAPL",
+  "GOOGL",
+  "MSFT",
+  "AMZN",
+  "TSLA",
+  "META",
+  "NFLX",
+  "NVDA",
+  "IBM",
+  "INTC",
+];
 
 function StockPage() {
   const [stocks, setStocks] = useState([]);
@@ -18,28 +30,35 @@ function StockPage() {
   const [timeAgo, setTimeAgo] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
 
+  // AlertBox state
+  const [alertOpen, setAlertOpen] = useState(false);
+  const [alertMsg, setAlertMsg] = useState("");
+  const [alertTitle, setAlertTitle] = useState(""); // optional; AlertBox will default to host says
+
   const navigate = useNavigate();
 
-  // ✅ Fetch Data (unchanged interval, now via backend)
+  // Fetch Data (unchanged behavior; backend endpoint)
   useEffect(() => {
     async function fetchStockData() {
       try {
-        // call backend aggregation endpoint
         const res = await axios.get(`/api/quotes?symbols=${STOCKS.join(",")}`);
         setStocks(res.data);
         setLoading(false);
         setLastUpdated(Date.now());
       } catch (err) {
         console.error("Error fetching stock data:", err);
+        setLoading(false);
+        setAlertMsg("Failed to load stock data.");
+        setAlertOpen(true);
       }
     }
 
     fetchStockData();
-    const interval = setInterval(fetchStockData, 60000); // keep 60s
+    const interval = setInterval(fetchStockData, 60000); // 60s refresh
     return () => clearInterval(interval);
   }, []);
 
-  // ✅ Time ago tracker
+  // Time-ago tracker for lastUpdated
   useEffect(() => {
     if (!lastUpdated) return;
     const interval = setInterval(() => {
@@ -49,7 +68,7 @@ function StockPage() {
     return () => clearInterval(interval);
   }, [lastUpdated]);
 
-  // ✅ Sorting
+  // Sorting helpers
   function handleSort(key) {
     let direction = "ascending";
     if (sortConfig.key === key && sortConfig.direction === "ascending") {
@@ -69,22 +88,23 @@ function StockPage() {
     });
   }
 
-  // ✅ Modal Handlers
+  // Modal handlers
   function handleBuyClick(stock) {
     setSelectedStock(stock);
     setQuantity("");
     setShowModal(true);
   }
 
-  // ✅ Confirm buy — now posts to backend; keeps localStorage highlight behavior
+  // Confirm buy: POST to backend, update localStorage for highlighting, show AlertBox instead of alert()
   function confirmBuy() {
     const qty = parseInt(quantity, 10);
     if (!qty || qty <= 0) {
-      alert("Please enter a valid quantity.");
+      setAlertMsg("Please enter a valid quantity.");
+      setAlertTitle(""); // optional
+      setAlertOpen(true);
       return;
     }
 
-    // send to backend portfolio
     const payload = {
       symbol: selectedStock.symbol,
       companyName: selectedStock.name,
@@ -95,7 +115,7 @@ function StockPage() {
     axios
       .post("/api/portfolio", payload)
       .then(() => {
-        // maintain your existing highlight logic by also updating localStorage
+        // Keep localStorage logic for highlighting (unchanged)
         const existingPortfolio = JSON.parse(localStorage.getItem("portfolio")) || [];
         const existingStock = existingPortfolio.find((item) => item.symbol === selectedStock.symbol);
 
@@ -111,16 +131,22 @@ function StockPage() {
         }
         localStorage.setItem("portfolio", JSON.stringify(existingPortfolio));
 
-        alert(`${qty} shares of ${selectedStock.symbol} added to portfolio!`);
+        // Show custom alert instead of browser alert
+        setAlertMsg(`${qty} shares of ${selectedStock.symbol} added to portfolio!`);
+        setAlertTitle(""); // optional
+        setAlertOpen(true);
+
         setShowModal(false);
       })
       .catch((err) => {
         console.error(err);
-        alert("Failed to add to portfolio.");
+        setAlertMsg("Failed to add to portfolio.");
+        setAlertTitle("");
+        setAlertOpen(true);
       });
   }
 
-  // ✅ Highlight bought (unchanged)
+  // Bought highlighting logic (unchanged)
   const portfolio = JSON.parse(localStorage.getItem("portfolio")) || [];
   const boughtSymbols = portfolio.map((s) => s.symbol);
 
@@ -136,26 +162,43 @@ function StockPage() {
 
   return (
     <div className="stock-page">
-      {/* ✅ Hamburger Icon */}
-      <button className="stock-hamburger" onClick={() => setMenuOpen((s) => !s)} aria-label="Toggle menu">
+      {/* Hamburger */}
+      <button
+        className="stock-hamburger"
+        onClick={() => setMenuOpen((s) => !s)}
+        aria-label="Toggle menu"
+      >
         <span className="stock-bar" />
         <span className="stock-bar" />
         <span className="stock-bar" />
       </button>
 
-      {/* ✅ Sidebar */}
+      {/* Sidebar */}
       <aside className={`stock-sidebar ${menuOpen ? "open" : ""}`}>
         <h2 className="stock-menuTitle">📈 Dashboard Menu</h2>
-        <button className="stock-menuBtn" onClick={() => navigate("/stocks")}>
+        <button
+          className="stock-menuBtn"
+          onClick={() => {
+            setMenuOpen(false);
+            navigate("/stocks");
+          }}
+        >
           💹 Stocks
         </button>
-        <button className="stock-menuBtn" onClick={() => navigate("/portfolio")}>
+        <button
+          className="stock-menuBtn"
+          onClick={() => {
+            setMenuOpen(false);
+            navigate("/portfolio");
+          }}
+        >
           💼 Portfolio
         </button>
       </aside>
+
       {menuOpen && <div className="stock-overlay" onClick={() => setMenuOpen(false)} />}
 
-      {/* ✅ Main Container */}
+      {/* Main container */}
       <div className="stock-container">
         <h1 className="stock-title">💹 Global Stock Market Dashboard</h1>
         <p className="stock-subtitle">Live Data | Auto-refresh every 1 minute</p>
@@ -172,7 +215,7 @@ function StockPage() {
         </div>
 
         <div className="stock-tableWrapper">
-          <table className="stock-table">
+          <table className="stock-table" aria-label="Stock table">
             <thead>
               <tr>
                 {[
@@ -194,6 +237,7 @@ function StockPage() {
                     className={`stock-th ${key !== "buy" ? "sortable" : ""}`}
                     role={key !== "buy" ? "button" : undefined}
                     tabIndex={key !== "buy" ? 0 : undefined}
+                    aria-label={key}
                   >
                     {key === "symbol"
                       ? "Symbol"
@@ -240,9 +284,7 @@ function StockPage() {
                   </td>
                   <td className="stock-td">{s.high ? s.high.toFixed(2) : "—"}</td>
                   <td className="stock-td">{s.low ? s.low.toFixed(2) : "—"}</td>
-                  <td className="stock-td">
-                    {s.volume !== "N/A" ? s.volume.toLocaleString() : "—"}
-                  </td>
+                  <td className="stock-td">{s.volume !== "N/A" ? s.volume.toLocaleString() : "—"}</td>
                   <td className="stock-td">{s.marketCap !== "N/A" ? s.marketCap + "B" : "—"}</td>
                   <td className="stock-td">{s.pe !== "N/A" ? s.pe.toFixed(2) : "—"}</td>
                   <td className="stock-td">
@@ -257,20 +299,23 @@ function StockPage() {
         </div>
       </div>
 
-      {/* ✅ Buy Modal */}
+      {/* Buy Modal (keeps using the same stock-modal CSS classes) */}
       {showModal && (
         <div className="stock-modalOverlay">
-          <div className="stock-modal">
-            <h3>Buy {selectedStock?.symbol}</h3>
-            <p>{selectedStock?.name}</p>
+          <div className="stock-modal" role="dialog" aria-modal="true" aria-labelledby="buy-modal-title">
+            <h3 id="buy-modal-title">Buy {selectedStock?.symbol}</h3>
+            <p style={{ marginTop: 6, marginBottom: 8 }}>{selectedStock?.name}</p>
+
             <input
               type="number"
               placeholder="Enter quantity"
               value={quantity}
               onChange={(e) => setQuantity(e.target.value)}
               className="stock-input"
+              aria-label="Quantity"
             />
-            <div className="stock-modalBtns">
+
+            <div className="stock-modalBtns" style={{ marginTop: 12 }}>
               <button className="stock-confirmBtn" onClick={confirmBuy}>
                 Confirm
               </button>
@@ -281,6 +326,14 @@ function StockPage() {
           </div>
         </div>
       )}
+
+      {/* Custom black alert component (replaces alert()) */}
+      <AlertBox
+        open={alertOpen}
+        title={alertTitle}
+        message={alertMsg}
+        onClose={() => setAlertOpen(false)}
+      />
     </div>
   );
 }

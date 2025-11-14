@@ -1,1 +1,56 @@
-[]
+[
+  {
+    "symbol": "AAPL",
+    "companyName": "Apple Inc",
+    "price": 272.95,
+    "quantity": 3
+  },
+  {
+    "symbol": "AAPL",
+    "companyName": "Apple Inc",
+    "price": 272.95,
+    "quantity": 3
+  },
+  {
+    "symbol": "AAPL",
+    "companyName": "Apple Inc",
+    "price": 272.95,
+    "quantity": 3
+  },
+  {
+    "symbol": "AAPL",
+    "companyName": "Apple Inc",
+    "price": 272.95,
+    "quantity": 3
+  },
+  {
+    "symbol": "AAPL",
+    "companyName": "Apple Inc",
+    "price": 272.95,
+    "quantity": 3
+  },
+  {
+    "symbol": "AAPL",
+    "companyName": "Apple Inc",
+    "price": 272.95,
+    "quantity": 3
+  },
+  {
+    "symbol": "MSFT",
+    "companyName": "Microsoft Corp",
+    "price": 503.29,
+    "quantity": 1
+  },
+  {
+    "symbol": "MSFT",
+    "companyName": "Microsoft Corp",
+    "price": 503.29,
+    "quantity": 1
+  },
+  {
+    "symbol": "AAPL",
+    "companyName": "Apple Inc",
+    "price": 272.95,
+    "quantity": 3
+  }
+]

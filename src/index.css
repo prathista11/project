@@ -647,3 +647,99 @@ code {
     font-size: 1.6rem;
   }
 }
+/* ---------------- AlertBox (browser-like black dialog) ---------------- */
+.alertbox-portal {
+  position: fixed;
+  inset: 0;
+  z-index: 6000;
+  display: flex;
+  align-items: flex-start;    /* top area like browser alert */
+  justify-content: center;
+  padding-top: 250px;          /* push it down a bit like screenshot */
+  pointer-events: none;       /* allow page clicks outside to pass through */
+}
+
+.alertbox {
+  pointer-events: auto;       /* receive pointer events inside box */
+  width: min(720px, 92%);
+  max-width: 500px;
+  background: rgba(30,58,138,0.95);
+  color: #e6eefb;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(2,6,23,0.7);
+  border: 1px solid rgba(255,255,255,0.06);
+  overflow: hidden;
+  font-family: 'Poppins', system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+}
+
+/* header area (title on left) */
+.alertbox-header {
+  padding: 18px 22px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.008));
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+}
+
+.alertbox-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #f3f7fb;
+}
+
+/* message body */
+.alertbox-body {
+  padding: 20px 22px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.004));
+  color: #dce6ef;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+}
+
+.alertbox-message {
+  font-size: medium;
+  margin: 0;
+  line-height: 1.45;
+}
+
+/* action area (OK button on right) */
+.alertbox-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding: 18px 22px;
+  border-top: 1px solid rgba(255,255,255,0.02);
+  background: linear-gradient(180deg, rgba(255,255,255,0.008), rgba(255,255,255,0.002));
+}
+
+.alertbox-ok {
+  background: linear-gradient(180deg,#cfe6ff,#cfe6ff);
+  color: #0b2b5a;
+  border: 3px solid rgba(177,207,255,0.9);
+  padding: 10px 20px;
+  border-radius: 28px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(3,8,22,0.35);
+  transition: transform .08s ease, box-shadow .12s ease;
+}
+.alertbox-ok:focus {
+  outline: 3px solid rgba(177,207,255,0.25);
+  outline-offset: 3px;
+}
+.alertbox-ok:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 22px rgba(3,8,22,0.45);
+}
+
+/* responsive */
+@media (max-width: 520px) {
+  .alertbox {
+    width: calc(100% - 32px);
+    border-radius: 10px;
+  }
+  .alertbox-actions {
+    padding: 14px;
+  }
+  .alertbox-ok {
+    padding: 8px 16px;
+  }
+}
