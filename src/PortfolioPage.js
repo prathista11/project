@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import "./index.css";
 
 function PortfolioPage() {
   const [portfolio, setPortfolio] = useState([]);
@@ -45,62 +46,53 @@ function PortfolioPage() {
   };
 
   return (
-    <div style={{ padding: "20px", backgroundColor: "#f2f5f9", minHeight: "100vh" }}>
-      <h1 style={{ textAlign: "center", color: "#333" }}>📊 My Portfolio (Live)</h1>
+    <div className="portfolio-container">
+      <h1 className="portfolio-title">📊 My Portfolio (Live)</h1>
 
       {portfolio.length === 0 ? (
-        <p style={{ textAlign: "center", color: "#555" }}>
+        <p className="portfolio-empty">
           No stocks yet! Go buy some from the Stock page 🚀
         </p>
       ) : (
-        <table
-          style={{
-            width: "90%",
-            margin: "20px auto",
-            borderCollapse: "collapse",
-            boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-            background: "white",
-            borderRadius: "12px",
-            overflow: "hidden",
-          }}
-        >
-          <thead style={{ backgroundColor: "#1e90ff", color: "white" }}>
-            <tr>
-              <th style={{ padding: "10px" }}>Company</th>
-              <th>Symbol</th>
-              <th>Price</th>
-              <th>Quantity</th>
-              <th>Total Value</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {portfolio.map((stock, index) => (
-              <tr key={index} style={{ textAlign: "center", borderBottom: "1px solid #ddd" }}>
-                <td>{stock.companyName}</td>
-                <td>{stock.symbol}</td>
-                <td>${stock.price}</td>
-                <td>{stock.quantity}</td>
-                <td>${(Number(stock.price || 0) * Number(stock.quantity || 0)).toFixed(2)}</td>
-                <td>
-                  <button
-                    onClick={() => handleSell(stock.symbol)}
-                    style={{
-                      background: "#ff4d4d",
-                      border: "none",
-                      padding: "6px 10px",
-                      color: "white",
-                      borderRadius: "6px",
-                      cursor: "pointer",
-                    }}
-                  >
-                    Sell
-                  </button>
-                </td>
+        <div className="portfolio-table-wrap">
+          <table className="portfolio-table">
+            <thead className="portfolio-thead">
+              <tr>
+                <th className="p-col">Company</th>
+                <th className="p-col">Symbol</th>
+                <th className="p-col">Price</th>
+                <th className="p-col">Quantity</th>
+                <th className="p-col">Total Value</th>
+                <th className="p-col">Action</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {portfolio.map((stock, index) => (
+                <tr key={index} className="portfolio-row">
+                  <td className="p-cell">{stock.companyName}</td>
+                  <td className="p-cell">{stock.symbol}</td>
+                  <td className="p-cell">${stock.price}</td>
+                  <td className="p-cell">{stock.quantity}</td>
+                  <td className="p-cell">
+                    $
+                    {(
+                      Number(stock.price || 0) * Number(stock.quantity || 0)
+                    ).toFixed(2)}
+                  </td>
+                  <td className="p-cell">
+                    <button
+                      type="button"
+                      className="p-sell-btn"
+                      onClick={() => handleSell(stock.symbol)}
+                    >
+                      Sell
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );

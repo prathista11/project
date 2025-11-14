@@ -1,3 +1,15 @@
+/* ===================================================================
+   index.css — Consolidated styles for App, Navbar, StockPage, Portfolio
+   ===================================================================
+   - Contains: reset/base, app layout, navbar, nav-component, stock,
+     portfolio styles and responsive tweaks.
+   - Font: Poppins imported for consistent typography.
+*/
+
+/* ---------- Import Font ---------- */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap');
+
+/* ---------- Reset / Base ---------- */
 /* Reset all default browser spacing */
 html,
 body,
@@ -5,7 +17,7 @@ body,
   margin: 0;
   padding: 0;
   height: 100%;
-  background-color: #eaf0f6; /* same as your app background */
+  background-color: #eaf0f6; /* same as app background */
   overflow-x: hidden;
 }
 
@@ -23,7 +35,615 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Code font */
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
+}
+
+/* Ensure Poppins is used where specified */
+:root {
+  --primary-blue: #1e3a8a;
+  --primary-blue-2: #2563eb;
+  --accent: #1097b9;
+}
+
+/* ------------------------------------------------------------------
+   App layout (App.js)
+   ------------------------------------------------------------------ */
+.app-container {
+  min-height: 100vh;
+  font-family: 'Poppins', sans-serif;
+  background-color: #eaf0f6;
+}
+
+/* ---------- Navbar (App level) ---------- */
+.navbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 65px;
+  background-color: var(--primary-blue);
+  color: white;
+  display: flex;
+  align-items: center;
+  padding: 0 25px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+  z-index: 2000;
+}
+
+.menu-button {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 28px;
+  cursor: pointer;
+  margin-right: 20px;
+  padding: 6px 10px;
+}
+
+.nav-title {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0;
+}
+
+/* Sidebar used by App (left slide) */
+.sidebar {
+  position: fixed;
+  top: 0;
+  left: -450px; /* hidden by default */
+  width: 320px;
+  height: 100%;
+  background: linear-gradient(180deg, var(--primary-blue), var(--primary-blue-2));
+  color: white;
+  padding: 90px 20px 20px; /* starts below navbar */
+  box-shadow: 4px 0 12px rgba(0,0,0,0.3);
+  transition: left 0.3s ease-in-out;
+  z-index: 1500;
+}
+
+.sidebar.open {
+  left: 0;
+}
+
+.sidebar-title {
+  text-align: center;
+  font-weight: 600;
+  margin-bottom: 40px;
+  border-bottom: 2px solid rgba(255,255,255,0.2);
+  padding-bottom: 10px;
+}
+
+.nav-link {
+  display: block;
+  color: white;
+  text-decoration: none;
+  font-size: 18px;
+  margin: 20px 0;
+  padding: 10px 15px;
+  border-radius: 8px;
+  transition: background 0.2s ease;
+}
+
+.nav-link:hover,
+.nav-link:focus {
+  background: rgba(255,255,255,0.08);
+  outline: none;
+}
+
+/* Main content area (shifted when sidebar open) */
+.content {
+  padding-top: 85px; /* leaves space for navbar */
+  transition: margin-left 0.3s ease-in-out;
+  margin-left: 0;
+}
+
+.content.shifted {
+  margin-left: 320px;
+}
+
+/* ------------------------------------------------------------------
+   Navbar component (Navbar.js) - prefixed nav- to avoid collisions
+   ------------------------------------------------------------------ */
+.nav-hamburger {
+  font-size: 26px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: white;
+  position: absolute;
+  top: 15px;
+  left: 20px;
+  z-index: 1000;
+  display: inline-flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 6px;
+}
+
+/* small bar lines inside hamburger */
+.nav-bar {
+  display: block;
+  width: 30px;
+  height: 3px;
+  background-color: var(--primary-blue);
+  margin: 6px 0;
+  border-radius: 4px;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+/* Sidebar base (hidden by transform) */
+.nav-sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 230px;
+  height: 100%;
+  background-color: var(--primary-blue);
+  color: white;
+  padding: 20px;
+  box-shadow: 3px 0 10px rgba(0,0,0,0.3);
+  transform: translateX(-100%);
+  transition: transform 0.3s ease;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.nav-sidebar.open {
+  transform: translateX(0);
+}
+
+.nav-menuTitle {
+  margin-top: 10px;
+  font-size: 1.3rem;
+  border-bottom: 2px solid #93c5fd;
+  padding-bottom: 10px;
+}
+
+.nav-menuBtn {
+  background: white;
+  color: var(--primary-blue);
+  font-weight: 600;
+  border: none;
+  border-radius: 8px;
+  padding: 10px;
+  cursor: pointer;
+}
+
+.nav-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.3);
+  z-index: 999;
+}
+
+/* ------------------------------------------------------------------
+   StockPage styles (stock- prefix to avoid collisions)
+   ------------------------------------------------------------------ */
+.stock-page {
+  min-height: 100vh;
+  padding: 0 20px 40px 20px;
+  margin-top: 0;
+  font-family: 'Poppins', sans-serif;
+  background: linear-gradient(135deg, #f3f6fb 0%, #ffffff 100%);
+}
+
+/* Container card */
+.stock-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  background: rgba(255,255,255,0.95);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.10);
+  border-radius: 18px;
+  padding: 30px;
+  backdrop-filter: blur(6px);
+}
+
+/* Loading */
+.stock-loading {
+  text-align: center;
+  margin-top: 200px;
+  color: var(--primary-blue);
+  font-size: 1.5rem;
+}
+
+/* Hamburger + sidebar (namespaced) */
+.stock-hamburger {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  cursor: pointer;
+  z-index: 1001;
+  background: transparent;
+  border: none;
+  display: inline-flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px;
+}
+
+.stock-bar {
+  width: 30px;
+  height: 3px;
+  background-color: var(--primary-blue);
+  border-radius: 4px;
+}
+
+/* Sidebar */
+.stock-sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 230px;
+  height: 100%;
+  background: rgba(30,58,138,0.95);
+  color: white;
+  padding: 20px;
+  box-shadow: 3px 0 10px rgba(0,0,0,0.25);
+  backdrop-filter: blur(6px);
+  transform: translateX(-100%);
+  transition: transform 0.28s ease;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.stock-sidebar.open {
+  transform: translateX(0);
+}
+
+.stock-menuTitle {
+  font-size: 1.15rem;
+  border-bottom: 2px solid #93c5fd;
+  padding-bottom: 10px;
+  margin-top: 6px;
+}
+
+.stock-menuBtn {
+  background: white;
+  color: var(--primary-blue);
+  font-weight: 600;
+  border: none;
+  border-radius: 8px;
+  padding: 10px;
+  cursor: pointer;
+}
+
+/* Overlay for menu */
+.stock-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.3);
+  z-index: 999;
+}
+
+/* Title/subtitle */
+.stock-title {
+  text-align: center;
+  color: var(--primary-blue);
+  font-size: 2.2rem;
+  margin-bottom: 6px;
+}
+
+.stock-subtitle {
+  text-align: center;
+  color: #555;
+  margin-bottom: 8px;
+}
+
+.stock-lastUpdated {
+  text-align: center;
+  color: #333;
+  font-size: 0.9rem;
+  margin-bottom: 18px;
+}
+
+/* Search */
+.stock-searchBarContainer {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.stock-searchBar {
+  width: 60%;
+  padding: 10px 15px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  outline: none;
+  font-size: 1rem;
+}
+
+/* Table wrapper */
+.stock-tableWrapper {
+  overflow-x: auto;
+}
+
+.stock-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: center;
+}
+
+/* Header */
+.stock-th {
+  padding: 14px 10px;
+  background: linear-gradient(90deg, var(--primary-blue), var(--primary-blue-2));
+  color: white;
+  text-transform: uppercase;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.stock-th.sortable {
+  cursor: pointer;
+}
+
+/* Rows */
+.stock-row {
+  transition: all 0.22s ease;
+}
+
+.stock-row.even {
+  background: rgba(255,255,255,0.72);
+}
+
+.stock-row.odd {
+  background: rgba(245,250,255,0.72);
+}
+
+/* Highlight for bought */
+.stock-row.bought {
+  background: rgba(144, 213, 238, 0.45) !important;
+}
+
+/* Cells */
+.stock-td {
+  padding: 12px 10px;
+  border-bottom: 1px solid #e5e7eb;
+  vertical-align: middle;
+}
+
+/* Emphasized current price */
+.stock-current {
+  font-weight: 600;
+  color: var(--primary-blue);
+}
+
+/* Positive / negative colors */
+.positive {
+  color: green;
+  font-weight: 700;
+}
+
+.negative {
+  color: red;
+  font-weight: 700;
+}
+
+/* Buy button */
+.stock-buyBtn {
+  background-color: var(--accent);
+  color: white;
+  border: none;
+  padding: 6px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+/* Modal */
+.stock-modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+}
+
+.stock-modal {
+  background: white;
+  padding: 25px;
+  border-radius: 10px;
+  width: 320px;
+  text-align: center;
+  box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+}
+
+.stock-input {
+  width: 80%;
+  padding: 8px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  margin: 12px 0;
+}
+
+.stock-modalBtns {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+
+.stock-confirmBtn {
+  background-color: #109ab9;
+  border: none;
+  color: white;
+  padding: 8px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.stock-cancelBtn {
+  background-color: #ef4444;
+  border: none;
+  color: white;
+  padding: 8px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+/* ------------------------------------------------------------------
+   Portfolio Page styles (portfolio- prefix)
+   ------------------------------------------------------------------ */
+.portfolio-container {
+  padding: 20px;
+  background-color: #f2f5f9;
+  min-height: 100vh;
+}
+
+.portfolio-title {
+  text-align: center;
+  color: #333;
+  margin: 0 0 12px 0;
+}
+
+/* Empty state text */
+.portfolio-empty {
+  text-align: center;
+  color: #555;
+  margin-top: 18px;
+}
+
+/* Table wrapper to allow border-radius and overflow */
+.portfolio-table-wrap {
+  width: 90%;
+  margin: 20px auto;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+/* Table base */
+.portfolio-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 15px;
+}
+
+/* Thead style */
+.portfolio-thead {
+  background-color: #1e90ff;
+  color: white;
+  text-align: left;
+}
+
+/* Header and cell spacing */
+.p-col,
+.p-cell {
+  padding: 10px;
+  text-align: center;
+}
+
+/* Row style */
+.portfolio-row {
+  text-align: center;
+  border-bottom: 1px solid #ddd;
+}
+
+.portfolio-row:last-child {
+  border-bottom: none;
+}
+
+/* Sell button */
+.p-sell-btn {
+  background: #ff4d4d;
+  border: none;
+  padding: 6px 10px;
+  color: white;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: transform 0.08s ease, box-shadow 0.08s ease;
+}
+
+.p-sell-btn:active {
+  transform: translateY(1px);
+}
+
+/* ------------------------------------------------------------------
+   Small / Responsive tweaks (global)
+   ------------------------------------------------------------------ */
+@media (max-width: 920px) {
+  .stock-searchBar {
+    width: 80%;
+  }
+  .stock-container {
+    padding: 20px;
+  }
+  .portfolio-table-wrap {
+    width: 96%;
+  }
+}
+
+@media (max-width: 720px) {
+  .p-col, .p-cell {
+    padding: 8px;
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  .sidebar {
+    width: 260px;
+    left: -320px;
+  }
+  .sidebar.open {
+    left: 0;
+  }
+  .content.shifted {
+    margin-left: 260px;
+  }
+
+  .nav-title {
+    font-size: 18px;
+  }
+
+  .menu-button, .menu-button:focus {
+    font-size: 24px;
+  }
+
+  .nav-hamburger {
+    top: 12px;
+    left: 12px;
+  }
+
+  .nav-bar {
+    width: 26px;
+    height: 3px;
+  }
+
+  .stock-sidebar {
+    width: 200px;
+  }
+
+  .stock-hamburger {
+    top: 12px;
+    left: 12px;
+  }
+
+  .stock-bar {
+    width: 26px;
+    height: 3px;
+  }
+
+  .stock-title {
+    font-size: 1.6rem;
+  }
 }

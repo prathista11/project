@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import "./index.css";
 
 // const API_KEY = "..."; // no longer needed because we now call the backend
 const STOCKS = ["AAPL", "GOOGL", "MSFT", "AMZN", "TSLA", "META", "NFLX", "NVDA", "IBM", "INTC"];
@@ -131,52 +132,47 @@ function StockPage() {
     )
   );
 
-  if (loading) return <h2 style={styles.loading}>Loading live stock data...</h2>;
+  if (loading) return <h2 className="stock-loading">Loading live stock data...</h2>;
 
   return (
-    <div style={styles.page}>
+    <div className="stock-page">
       {/* ✅ Hamburger Icon */}
-      <div style={styles.hamburger} onClick={() => setMenuOpen(!menuOpen)}>
-        <div style={styles.bar}></div>
-        <div style={styles.bar}></div>
-        <div style={styles.bar}></div>
-      </div>
+      <button className="stock-hamburger" onClick={() => setMenuOpen((s) => !s)} aria-label="Toggle menu">
+        <span className="stock-bar" />
+        <span className="stock-bar" />
+        <span className="stock-bar" />
+      </button>
 
       {/* ✅ Sidebar */}
-      <div
-        style={{
-          ...styles.sidebar,
-          transform: menuOpen ? "translateX(0)" : "translateX(-100%)",
-        }}
-      >
-        <h2 style={styles.menuTitle}>📈 Dashboard Menu</h2>
-        <button style={styles.menuBtn} onClick={() => navigate("/stocks")}>
+      <aside className={`stock-sidebar ${menuOpen ? "open" : ""}`}>
+        <h2 className="stock-menuTitle">📈 Dashboard Menu</h2>
+        <button className="stock-menuBtn" onClick={() => navigate("/stocks")}>
           💹 Stocks
         </button>
-        <button style={styles.menuBtn} onClick={() => navigate("/portfolio")}>
+        <button className="stock-menuBtn" onClick={() => navigate("/portfolio")}>
           💼 Portfolio
         </button>
-      </div>
-      {menuOpen && <div style={styles.overlay} onClick={() => setMenuOpen(false)}></div>}
+      </aside>
+      {menuOpen && <div className="stock-overlay" onClick={() => setMenuOpen(false)} />}
 
       {/* ✅ Main Container */}
-      <div style={styles.container}>
-        <h1 style={styles.title}>💹 Global Stock Market Dashboard</h1>
-        <p style={styles.subtitle}>Live Data | Auto-refresh every 1 minute</p>
-        {lastUpdated && <p style={styles.lastUpdated}>🔄 Last updated: {timeAgo}</p>}
+      <div className="stock-container">
+        <h1 className="stock-title">💹 Global Stock Market Dashboard</h1>
+        <p className="stock-subtitle">Live Data | Auto-refresh every 1 minute</p>
+        {lastUpdated && <p className="stock-lastUpdated">🔄 Last updated: {timeAgo}</p>}
 
-        <div style={styles.searchBarContainer}>
+        <div className="stock-searchBarContainer">
           <input
             type="text"
             placeholder="🔍 Search by company or symbol..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            style={styles.searchBar}
+            className="stock-searchBar"
           />
         </div>
 
-        <div style={styles.tableWrapper}>
-          <table style={styles.table}>
+        <div className="stock-tableWrapper">
+          <table className="stock-table">
             <thead>
               <tr>
                 {[
@@ -195,10 +191,9 @@ function StockPage() {
                   <th
                     key={key}
                     onClick={() => key !== "buy" && handleSort(key)}
-                    style={{
-                      ...styles.th,
-                      cursor: key !== "buy" ? "pointer" : "default",
-                    }}
+                    className={`stock-th ${key !== "buy" ? "sortable" : ""}`}
+                    role={key !== "buy" ? "button" : undefined}
+                    tabIndex={key !== "buy" ? 0 : undefined}
                   >
                     {key === "symbol"
                       ? "Symbol"
@@ -221,11 +216,7 @@ function StockPage() {
                       : key === "pe"
                       ? "P/E Ratio"
                       : "Action"}
-                    {sortConfig.key === key
-                      ? sortConfig.direction === "ascending"
-                        ? " ▲"
-                        : " ▼"
-                      : ""}
+                    {sortConfig.key === key ? (sortConfig.direction === "ascending" ? " ▲" : " ▼") : ""}
                   </th>
                 ))}
               </tr>
@@ -234,45 +225,28 @@ function StockPage() {
               {filtered.map((s, i) => (
                 <tr
                   key={s.symbol}
-                  style={{
-                    ...styles.tr,
-                    background: boughtSymbols.includes(s.symbol)
-                      ? "rgba(144, 213, 238, 0.4)"
-                      : i % 2 === 0
-                      ? "rgba(255,255,255,0.7)"
-                      : "rgba(245,250,255,0.7)",
-                  }}
+                  className={`stock-row ${boughtSymbols.includes(s.symbol) ? "bought" : ""} ${
+                    i % 2 === 0 ? "even" : "odd"
+                  }`}
                 >
-                  <td style={styles.td}>{s.symbol}</td>
-                  <td style={styles.td}>{s.name}</td>
-                  <td style={{ ...styles.td, fontWeight: "600", color: "#1e3a8a" }}>
-                    {s.current ? s.current.toFixed(2) : "—"}
-                  </td>
-                  <td
-                    style={{
-                      ...styles.td,
-                      color: s.change >= 0 ? "green" : "red",
-                      fontWeight: "bold",
-                    }}
-                  >
+                  <td className="stock-td">{s.symbol}</td>
+                  <td className="stock-td stock-name">{s.name}</td>
+                  <td className="stock-td stock-current">{s.current ? s.current.toFixed(2) : "—"}</td>
+                  <td className={`stock-td stock-change ${s.change >= 0 ? "positive" : "negative"}`}>
                     {s.change ? s.change.toFixed(2) : "—"}
                   </td>
-                  <td
-                    style={{
-                      ...styles.td,
-                      color: s.percent >= 0 ? "green" : "red",
-                      fontWeight: "bold",
-                    }}
-                  >
+                  <td className={`stock-td stock-percent ${s.percent >= 0 ? "positive" : "negative"}`}>
                     {s.percent ? s.percent.toFixed(2) : "—"}%
                   </td>
-                  <td style={styles.td}>{s.high ? s.high.toFixed(2) : "—"}</td>
-                  <td style={styles.td}>{s.low ? s.low.toFixed(2) : "—"}</td>
-                  <td style={styles.td}>{s.volume !== "N/A" ? s.volume.toLocaleString() : "—"}</td>
-                  <td style={styles.td}>{s.marketCap !== "N/A" ? s.marketCap + "B" : "—"}</td>
-                  <td style={styles.td}>{s.pe !== "N/A" ? s.pe.toFixed(2) : "—"}</td>
-                  <td style={styles.td}>
-                    <button style={styles.buyBtn} onClick={() => handleBuyClick(s)}>
+                  <td className="stock-td">{s.high ? s.high.toFixed(2) : "—"}</td>
+                  <td className="stock-td">{s.low ? s.low.toFixed(2) : "—"}</td>
+                  <td className="stock-td">
+                    {s.volume !== "N/A" ? s.volume.toLocaleString() : "—"}
+                  </td>
+                  <td className="stock-td">{s.marketCap !== "N/A" ? s.marketCap + "B" : "—"}</td>
+                  <td className="stock-td">{s.pe !== "N/A" ? s.pe.toFixed(2) : "—"}</td>
+                  <td className="stock-td">
+                    <button className="stock-buyBtn" onClick={() => handleBuyClick(s)}>
                       {boughtSymbols.includes(s.symbol) ? "buy again" : "Buy"}
                     </button>
                   </td>
@@ -285,8 +259,8 @@ function StockPage() {
 
       {/* ✅ Buy Modal */}
       {showModal && (
-        <div style={styles.modalOverlay}>
-          <div style={styles.modal}>
+        <div className="stock-modalOverlay">
+          <div className="stock-modal">
             <h3>Buy {selectedStock?.symbol}</h3>
             <p>{selectedStock?.name}</p>
             <input
@@ -294,13 +268,13 @@ function StockPage() {
               placeholder="Enter quantity"
               value={quantity}
               onChange={(e) => setQuantity(e.target.value)}
-              style={styles.input}
+              className="stock-input"
             />
-            <div style={styles.modalBtns}>
-              <button style={styles.confirmBtn} onClick={confirmBuy}>
+            <div className="stock-modalBtns">
+              <button className="stock-confirmBtn" onClick={confirmBuy}>
                 Confirm
               </button>
-              <button style={styles.cancelBtn} onClick={() => setShowModal(false)}>
+              <button className="stock-cancelBtn" onClick={() => setShowModal(false)}>
                 Cancel
               </button>
             </div>
@@ -310,156 +284,5 @@ function StockPage() {
     </div>
   );
 }
-
-const styles = {
-  page: {
-    minHeight: "100vh",
-    background: "linear-gradient(135deg, #f3f3f3ff 0%, ffffffff(0, 0%, 100%, 1.00) 100%)",
-    padding: "0 20px 40px 20px",
-    marginTop: "0",
-    fontFamily: "'Poppins', sans-serif",
-  },
-  container: {
-    maxWidth: "1200px",
-    margin: "0 auto",
-    background: "rgba(255,255,255,0.85)",
-    boxShadow: "0 8px 32px rgba(0,0,0,0.15)",
-    borderRadius: "18px",
-    padding: "30px",
-    backdropFilter: "blur(10px)",
-  },
-  hamburger: {
-    position: "fixed",
-    top: "20px",
-    left: "20px",
-    cursor: "pointer",
-    zIndex: 1001,
-  },
-  bar: {
-    width: "30px",
-    height: "3px",
-    backgroundColor: "#1e3a8a",
-    margin: "6px 0",
-    borderRadius: "4px",
-  },
-  sidebar: {
-    position: "fixed",
-    top: 0,
-    left: 0,
-    width: "230px",
-    height: "100%",
-    background: "rgba(30,58,138,0.85)",
-    color: "white",
-    padding: "20px",
-    boxShadow: "3px 0 10px rgba(0,0,0,0.3)",
-    backdropFilter: "blur(10px)",
-    transform: "translateX(-100%)",
-    transition: "transform 0.3s ease",
-    zIndex: 1000,
-    display: "flex",
-    flexDirection: "column",
-    gap: "20px",
-  },
-  menuTitle: {
-    fontSize: "1.3rem",
-    borderBottom: "2px solid #93c5fd",
-    paddingBottom: "10px",
-  },
-  menuBtn: {
-    background: "white",
-    color: "#1e3a8a",
-    fontWeight: "600",
-    border: "none",
-    borderRadius: "8px",
-    padding: "10px",
-    cursor: "pointer",
-  },
-  overlay: {
-    position: "fixed",
-    top: 0,
-    left: 0,
-    width: "100%",
-    height: "100%",
-    background: "rgba(0,0,0,0.3)",
-    zIndex: 999,
-  },
-  title: { textAlign: "center", color: "#1e3a8a", fontSize: "2.2rem", marginBottom: "5px" },
-  subtitle: { textAlign: "center", color: "#555", marginBottom: "8px" },
-  lastUpdated: { textAlign: "center", color: "#333", fontSize: "0.9rem", marginBottom: "25px" },
-  searchBarContainer: { display: "flex", justifyContent: "center", marginBottom: "20px" },
-  searchBar: {
-    width: "60%",
-    padding: "10px 15px",
-    borderRadius: "8px",
-    border: "1px solid #ccc",
-    outline: "none",
-    fontSize: "1rem",
-  },
-  tableWrapper: { overflowX: "auto" },
-  table: { width: "100%", borderCollapse: "collapse", textAlign: "center" },
-  th: {
-    padding: "14px 10px",
-    background: "linear-gradient(90deg, #1e3a8a, #2563eb)",
-    color: "white",
-    textTransform: "uppercase",
-    fontSize: "0.85rem",
-    fontWeight: "600",
-  },
-  tr: { transition: "all 0.3s ease" },
-  td: { padding: "12px 10px", borderBottom: "1px solid #e5e7eb" },
-  buyBtn: {
-    backgroundColor: "#1097b9ff",
-    color: "white",
-    border: "none",
-    padding: "6px 10px",
-    borderRadius: "8px",
-    cursor: "pointer",
-    fontWeight: "bold",
-  },
-  modalOverlay: {
-    position: "fixed",
-    top: 0,
-    left: 0,
-    width: "100%",
-    height: "100%",
-    background: "rgba(0,0,0,0.5)",
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  modal: {
-    background: "white",
-    padding: "25px",
-    borderRadius: "10px",
-    width: "320px",
-    textAlign: "center",
-    boxShadow: "0 5px 20px rgba(0,0,0,0.2)",
-  },
-  input: {
-    width: "80%",
-    padding: "8px",
-    borderRadius: "6px",
-    border: "1px solid #ccc",
-    margin: "12px 0",
-  },
-  modalBtns: { display: "flex", justifyContent: "center", gap: "10px" },
-  confirmBtn: {
-    backgroundColor: "#109ab9ff",
-    border: "none",
-    color: "white",
-    padding: "8px 14px",
-    borderRadius: "8px",
-    cursor: "pointer",
-  },
-  cancelBtn: {
-    backgroundColor: "#ef4444",
-    border: "none",
-    color: "white",
-    padding: "8px 14px",
-    borderRadius: "8px",
-    cursor: "pointer",
-  },
-  loading: { textAlign: "center", marginTop: "200px", color: "#1e3a8a", fontSize: "1.5rem" },
-};
 
 export default StockPage;
