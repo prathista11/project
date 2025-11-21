@@ -4,14 +4,18 @@ import "./index.css";
 function PortfolioPage() {
   const [portfolio, setPortfolio] = useState([]);
 
-  // ✅ Load portfolio from backend and refresh prices via backend proxy
+  // Sell modal state
+  const [sellOpen, setSellOpen] = useState(false);
+  const [selectedStock, setSelectedStock] = useState(null);
+  const [sellQty, setSellQty] = useState(1);
+
+  // Load portfolio and refresh prices
   useEffect(() => {
     const fetchPortfolio = async () => {
       try {
         const res = await fetch("/api/portfolio");
         const savedPortfolio = await res.json();
 
-        // fetch live prices for each entry via backend
         const updated = await Promise.all(
           savedPortfolio.map(async (stock) => {
             const r = await fetch(`/api/stock/${stock.symbol}`);
@@ -29,19 +33,57 @@ function PortfolioPage() {
     };
 
     fetchPortfolio();
-    // ⏱ keep your 15s refresh
     const interval = setInterval(fetchPortfolio, 15000);
     return () => clearInterval(interval);
   }, []);
 
-  // ✅ Sell via backend and update table
-  const handleSell = async (symbol) => {
+  // Open sell modal
+  const openSellModal = (stock) => {
+    setSelectedStock(stock);
+    setSellQty(1);
+    setSellOpen(true);
+  };
+
+  // Confirm sell
+  const confirmSell = async () => {
+    if (!selectedStock) return;
+
+    const maxQty = Number(selectedStock.quantity || 0);
+    const qty = Number(sellQty);
+
+    if (!qty || qty <= 0) {
+      alert("Please enter a valid quantity to sell.");
+      return;
+    }
+    if (qty > maxQty) {
+      alert(`You only own ${maxQty} shares of ${selectedStock.symbol}.`);
+      return;
+    }
+
     try {
-      const res = await fetch(`/api/portfolio/${symbol}`, { method: "DELETE" });
+      const res = await fetch("/api/portfolio/sell", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          symbol: selectedStock.symbol,
+          quantity: qty,
+        }),
+      });
+
+      if (!res.ok) {
+        const errText = await res.text();
+        console.error("Sell failed:", errText);
+        alert("Failed to sell shares.");
+        return;
+      }
+
       const updated = await res.json();
       setPortfolio(updated);
+      setSellOpen(false);
+      setSelectedStock(null);
     } catch (err) {
       console.error("Failed to sell", err);
+      alert("Failed to sell due to a network error.");
     }
   };
 
@@ -83,7 +125,7 @@ function PortfolioPage() {
                     <button
                       type="button"
                       className="p-sell-btn"
-                      onClick={() => handleSell(stock.symbol)}
+                      onClick={() => openSellModal(stock)}
                     >
                       Sell
                     </button>
@@ -92,6 +134,54 @@ function PortfolioPage() {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Sell Modal */}
+      {sellOpen && selectedStock && (
+        <div className="p-modal-overlay">
+          <div className="p-modal">
+            <h3 className="p-modal-title">Sell {selectedStock.symbol}</h3>
+            <p style={{ marginBottom: 8 }}>
+              You own <b>{selectedStock.quantity}</b> shares of{" "}
+              {selectedStock.companyName}.
+            </p>
+
+            <input
+              type="number"
+              min={1}
+              max={selectedStock.quantity}
+              step={1}
+              value={sellQty}
+              onChange={(e) => {
+                const val = parseInt(e.target.value, 10);
+                if (isNaN(val) || val <= 0) {
+                  setSellQty(1);
+                } else if (val > Number(selectedStock.quantity)) {
+                  setSellQty(selectedStock.quantity);
+                } else {
+                  setSellQty(val);
+                }
+              }}
+              className="p-sell-input"
+              placeholder="Quantity to sell"
+            />
+
+            <div className="p-modal-btns">
+              <button className="p-confirm-btn" onClick={confirmSell}>
+                Confirm Sell
+              </button>
+              <button
+                className="p-cancel-btn"
+                onClick={() => {
+                  setSellOpen(false);
+                  setSelectedStock(null);
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

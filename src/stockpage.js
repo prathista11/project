@@ -22,22 +22,31 @@ function StockPage() {
   const [stocks, setStocks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [sortConfig, setSortConfig] = useState({ key: null, direction: "ascending" });
+  const [sortConfig, setSortConfig] = useState({
+    key: null,
+    direction: "ascending",
+  });
   const [showModal, setShowModal] = useState(false);
   const [selectedStock, setSelectedStock] = useState(null);
-  const [quantity, setQuantity] = useState("");
+
+  // ✅ quantity = number, default 1
+  const [quantity, setQuantity] = useState(1);
+
   const [lastUpdated, setLastUpdated] = useState(null);
   const [timeAgo, setTimeAgo] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
 
+  // ✅ symbols that are *currently* in portfolio (from backend)
+  const [boughtSymbols, setBoughtSymbols] = useState([]);
+
   // AlertBox state
   const [alertOpen, setAlertOpen] = useState(false);
   const [alertMsg, setAlertMsg] = useState("");
-  const [alertTitle, setAlertTitle] = useState(""); // optional; AlertBox will default to host says
+  const [alertTitle, setAlertTitle] = useState("");
 
   const navigate = useNavigate();
 
-  // Fetch Data (unchanged behavior; backend endpoint)
+  // Fetch live stock data
   useEffect(() => {
     async function fetchStockData() {
       try {
@@ -58,15 +67,33 @@ function StockPage() {
     return () => clearInterval(interval);
   }, []);
 
-  // Time-ago tracker for lastUpdated
+  // ⏱ Time-ago tracker
   useEffect(() => {
     if (!lastUpdated) return;
     const interval = setInterval(() => {
       const seconds = Math.floor((Date.now() - lastUpdated) / 1000);
-      setTimeAgo(seconds < 60 ? `${seconds} sec ago` : `${Math.floor(seconds / 60)} min ago`);
+      setTimeAgo(
+        seconds < 60 ? `${seconds} sec ago` : `${Math.floor(seconds / 60)} min ago`
+      );
     }, 1000);
     return () => clearInterval(interval);
   }, [lastUpdated]);
+
+  // ✅ Load CURRENT portfolio from backend only (no localStorage)
+  useEffect(() => {
+    async function fetchPortfolio() {
+      try {
+        const res = await axios.get("/api/portfolio");
+        const data = res.data || [];
+        const symbols = data.map((item) => item.symbol);
+        setBoughtSymbols(symbols);
+      } catch (err) {
+        console.error("Error loading portfolio for highlighting", err);
+      }
+    }
+
+    fetchPortfolio();
+  }, []);
 
   // Sorting helpers
   function handleSort(key) {
@@ -91,16 +118,17 @@ function StockPage() {
   // Modal handlers
   function handleBuyClick(stock) {
     setSelectedStock(stock);
-    setQuantity("");
+    setQuantity(1); // reset to 1
     setShowModal(true);
   }
 
-  // Confirm buy: POST to backend, update localStorage for highlighting, show AlertBox instead of alert()
+  // Confirm buy
   function confirmBuy() {
     const qty = parseInt(quantity, 10);
+
     if (!qty || qty <= 0) {
       setAlertMsg("Please enter a valid quantity.");
-      setAlertTitle(""); // optional
+      setAlertTitle("");
       setAlertOpen(true);
       return;
     }
@@ -115,25 +143,17 @@ function StockPage() {
     axios
       .post("/api/portfolio", payload)
       .then(() => {
-        // Keep localStorage logic for highlighting (unchanged)
-        const existingPortfolio = JSON.parse(localStorage.getItem("portfolio")) || [];
-        const existingStock = existingPortfolio.find((item) => item.symbol === selectedStock.symbol);
+        // ✅ Update boughtSymbols based on this buy
+        setBoughtSymbols((prev) =>
+          prev.includes(selectedStock.symbol)
+            ? prev
+            : [...prev, selectedStock.symbol]
+        );
 
-        if (existingStock) {
-          existingStock.quantity += qty;
-        } else {
-          existingPortfolio.push({
-            symbol: selectedStock.symbol,
-            companyName: selectedStock.name,
-            price: selectedStock.current,
-            quantity: qty,
-          });
-        }
-        localStorage.setItem("portfolio", JSON.stringify(existingPortfolio));
-
-        // Show custom alert instead of browser alert
-        setAlertMsg(`${qty} shares of ${selectedStock.symbol} added to portfolio!`);
-        setAlertTitle(""); // optional
+        setAlertMsg(
+          `${qty} shares of ${selectedStock.symbol} added to portfolio!`
+        );
+        setAlertTitle("");
         setAlertOpen(true);
 
         setShowModal(false);
@@ -146,10 +166,6 @@ function StockPage() {
       });
   }
 
-  // Bought highlighting logic (unchanged)
-  const portfolio = JSON.parse(localStorage.getItem("portfolio")) || [];
-  const boughtSymbols = portfolio.map((s) => s.symbol);
-
   const filtered = sortedStocks(
     stocks.filter(
       (s) =>
@@ -158,7 +174,8 @@ function StockPage() {
     )
   );
 
-  if (loading) return <h2 className="stock-loading">Loading live stock data...</h2>;
+  if (loading)
+    return <h2 className="stock-loading">Loading live stock data...</h2>;
 
   return (
     <div className="stock-page">
@@ -196,13 +213,20 @@ function StockPage() {
         </button>
       </aside>
 
-      {menuOpen && <div className="stock-overlay" onClick={() => setMenuOpen(false)} />}
+      {menuOpen && (
+        <div
+          className="stock-overlay"
+          onClick={() => setMenuOpen(false)}
+        />
+      )}
 
       {/* Main container */}
       <div className="stock-container">
         <h1 className="stock-title">💹 Global Stock Market Dashboard</h1>
         <p className="stock-subtitle">Live Data | Auto-refresh every 1 minute</p>
-        {lastUpdated && <p className="stock-lastUpdated">🔄 Last updated: {timeAgo}</p>}
+        {lastUpdated && (
+          <p className="stock-lastUpdated">🔄 Last updated: {timeAgo}</p>
+        )}
 
         <div className="stock-searchBarContainer">
           <input
@@ -234,7 +258,9 @@ function StockPage() {
                   <th
                     key={key}
                     onClick={() => key !== "buy" && handleSort(key)}
-                    className={`stock-th ${key !== "buy" ? "sortable" : ""}`}
+                    className={`stock-th ${
+                      key !== "buy" ? "sortable" : ""
+                    }`}
                     role={key !== "buy" ? "button" : undefined}
                     tabIndex={key !== "buy" ? 0 : undefined}
                     aria-label={key}
@@ -260,7 +286,11 @@ function StockPage() {
                       : key === "pe"
                       ? "P/E Ratio"
                       : "Action"}
-                    {sortConfig.key === key ? (sortConfig.direction === "ascending" ? " ▲" : " ▼") : ""}
+                    {sortConfig.key === key
+                      ? sortConfig.direction === "ascending"
+                        ? " ▲"
+                        : " ▼"
+                      : ""}
                   </th>
                 ))}
               </tr>
@@ -269,27 +299,52 @@ function StockPage() {
               {filtered.map((s, i) => (
                 <tr
                   key={s.symbol}
-                  className={`stock-row ${boughtSymbols.includes(s.symbol) ? "bought" : ""} ${
-                    i % 2 === 0 ? "even" : "odd"
-                  }`}
+                  className={`stock-row ${
+                    boughtSymbols.includes(s.symbol) ? "bought" : ""
+                  } ${i % 2 === 0 ? "even" : "odd"}`}
                 >
                   <td className="stock-td">{s.symbol}</td>
                   <td className="stock-td stock-name">{s.name}</td>
-                  <td className="stock-td stock-current">{s.current ? s.current.toFixed(2) : "—"}</td>
-                  <td className={`stock-td stock-change ${s.change >= 0 ? "positive" : "negative"}`}>
+                  <td className="stock-td stock-current">
+                    {s.current ? s.current.toFixed(2) : "—"}
+                  </td>
+                  <td
+                    className={`stock-td stock-change ${
+                      s.change >= 0 ? "positive" : "negative"
+                    }`}
+                  >
                     {s.change ? s.change.toFixed(2) : "—"}
                   </td>
-                  <td className={`stock-td stock-percent ${s.percent >= 0 ? "positive" : "negative"}`}>
+                  <td
+                    className={`stock-td stock-percent ${
+                      s.percent >= 0 ? "positive" : "negative"
+                    }`}
+                  >
                     {s.percent ? s.percent.toFixed(2) : "—"}%
                   </td>
-                  <td className="stock-td">{s.high ? s.high.toFixed(2) : "—"}</td>
-                  <td className="stock-td">{s.low ? s.low.toFixed(2) : "—"}</td>
-                  <td className="stock-td">{s.volume !== "N/A" ? s.volume.toLocaleString() : "—"}</td>
-                  <td className="stock-td">{s.marketCap !== "N/A" ? s.marketCap + "B" : "—"}</td>
-                  <td className="stock-td">{s.pe !== "N/A" ? s.pe.toFixed(2) : "—"}</td>
                   <td className="stock-td">
-                    <button className="stock-buyBtn" onClick={() => handleBuyClick(s)}>
-                      {boughtSymbols.includes(s.symbol) ? "buy again" : "Buy"}
+                    {s.high ? s.high.toFixed(2) : "—"}
+                  </td>
+                  <td className="stock-td">
+                    {s.low ? s.low.toFixed(2) : "—"}
+                  </td>
+                  <td className="stock-td">
+                    {s.volume !== "N/A" ? s.volume.toLocaleString() : "—"}
+                  </td>
+                  <td className="stock-td">
+                    {s.marketCap !== "N/A" ? s.marketCap + "B" : "—"}
+                  </td>
+                  <td className="stock-td">
+                    {s.pe !== "N/A" ? s.pe.toFixed(2) : "—"}
+                  </td>
+                  <td className="stock-td">
+                    <button
+                      className="stock-buyBtn"
+                      onClick={() => handleBuyClick(s)}
+                    >
+                      {boughtSymbols.includes(s.symbol)
+                        ? "buy again"
+                        : "Buy"}
                     </button>
                   </td>
                 </tr>
@@ -299,27 +354,49 @@ function StockPage() {
         </div>
       </div>
 
-      {/* Buy Modal (keeps using the same stock-modal CSS classes) */}
+      {/* Buy Modal */}
       {showModal && (
         <div className="stock-modalOverlay">
-          <div className="stock-modal" role="dialog" aria-modal="true" aria-labelledby="buy-modal-title">
+          <div
+            className="stock-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="buy-modal-title"
+          >
             <h3 id="buy-modal-title">Buy {selectedStock?.symbol}</h3>
-            <p style={{ marginTop: 6, marginBottom: 8 }}>{selectedStock?.name}</p>
+            <p style={{ marginTop: 6, marginBottom: 8 }}>
+              {selectedStock?.name}
+            </p>
 
             <input
               type="number"
               placeholder="Enter quantity"
               value={quantity}
-              onChange={(e) => setQuantity(e.target.value)}
+              min={1}
+              step={1}
+              onChange={(e) => {
+                const val = parseInt(e.target.value, 10);
+                if (isNaN(val) || val <= 0) {
+                  setQuantity(1);
+                } else {
+                  setQuantity(val);
+                }
+              }}
               className="stock-input"
               aria-label="Quantity"
             />
 
             <div className="stock-modalBtns" style={{ marginTop: 12 }}>
-              <button className="stock-confirmBtn" onClick={confirmBuy}>
+              <button
+                className="stock-confirmBtn"
+                onClick={confirmBuy}
+              >
                 Confirm
               </button>
-              <button className="stock-cancelBtn" onClick={() => setShowModal(false)}>
+              <button
+                className="stock-cancelBtn"
+                onClick={() => setShowModal(false)}
+              >
                 Cancel
               </button>
             </div>
@@ -327,7 +404,6 @@ function StockPage() {
         </div>
       )}
 
-      {/* Custom black alert component (replaces alert()) */}
       <AlertBox
         open={alertOpen}
         title={alertTitle}
