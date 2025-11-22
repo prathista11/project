@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import "./index.css";
+import Modal from "./Modal"; // adjust the path if needed
 
 function PortfolioPage() {
   const [portfolio, setPortfolio] = useState([]);
@@ -87,6 +88,11 @@ function PortfolioPage() {
     }
   };
 
+  const closeSellModal = () => {
+    setSellOpen(false);
+    setSelectedStock(null);
+  };
+
   return (
     <div className="portfolio-container">
       <h1 className="portfolio-title">📊 My Portfolio (Live)</h1>
@@ -137,11 +143,17 @@ function PortfolioPage() {
         </div>
       )}
 
-      {/* Sell Modal */}
-      {sellOpen && selectedStock && (
-        <div className="p-modal-overlay">
-          <div className="p-modal">
-            <h3 className="p-modal-title">Sell {selectedStock.symbol}</h3>
+      {/* Sell Modal using reusable Modal component */}
+      <Modal
+        open={sellOpen}
+        onClose={closeSellModal}
+        modalId="sell-modal"
+        title={
+          selectedStock ? `Sell ${selectedStock.symbol}` : "Sell Stock"
+        }
+      >
+        {selectedStock && (
+          <>
             <p style={{ marginBottom: 8 }}>
               You own <b>{selectedStock.quantity}</b> shares of{" "}
               {selectedStock.companyName}.
@@ -171,19 +183,13 @@ function PortfolioPage() {
               <button className="p-confirm-btn" onClick={confirmSell}>
                 Confirm Sell
               </button>
-              <button
-                className="p-cancel-btn"
-                onClick={() => {
-                  setSellOpen(false);
-                  setSelectedStock(null);
-                }}
-              >
+              <button className="p-cancel-btn" onClick={closeSellModal}>
                 Cancel
               </button>
             </div>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </Modal>
     </div>
   );
 }

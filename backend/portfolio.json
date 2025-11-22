@@ -12,15 +12,21 @@
     "quantity": 4
   },
   {
-    "symbol": "NVDA",
-    "companyName": "NVIDIA Corp",
-    "price": 180.64,
-    "quantity": 3
-  },
-  {
     "symbol": "INTC",
     "companyName": "Intel Corp",
     "price": 33.62,
+    "quantity": 1
+  },
+  {
+    "symbol": "META",
+    "companyName": "Meta Platforms Inc",
+    "price": 594.25,
+    "quantity": 2
+  },
+  {
+    "symbol": "NFLX",
+    "companyName": "Netflix Inc",
+    "price": 104.31,
     "quantity": 2
   }
 ]

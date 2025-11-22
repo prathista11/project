@@ -502,6 +502,8 @@ code {
 /* ------------------------------------------------------------------
    Portfolio Page styles (portfolio- prefix)
    ------------------------------------------------------------------ */
+
+
 .portfolio-container {
   padding: 20px;
   background-color: #f2f5f9;
@@ -578,6 +580,145 @@ code {
 }
 
 /* ------------------------------------------------------------------
+   Portfolio Sell Modal (reusable Modal component)
+   ------------------------------------------------------------------ */
+
+/* full-screen dark overlay */
+.p-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3000; /* above navbar/stock modal */
+}
+
+/* modal card */
+.p-modal {
+  position: relative;
+  width: min(420px, 92%);
+  background: #83b3d0;
+  border-radius: 16px;
+  padding: 20px 22px 18px;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.35);
+  font-family: 'Poppins', system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  animation: p-modal-pop 0.18s ease-out;
+}
+
+/* pop-in animation */
+@keyframes p-modal-pop {
+  from {
+    transform: translateY(10px) scale(0.97);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+/* title inside modal */
+.p-modal-title {
+  margin: 0 0 10px;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #111827;
+}
+
+/* body layout */
+.p-modal-body {
+  font-size: 0.92rem;
+  color: #374151;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* close (X) button */
+.p-modal-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: transparent;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  color: #6b7280;
+  padding: 4px;
+  line-height: 1;
+}
+
+.p-modal-close:hover {
+  color: #111827;
+}
+
+/* input for quantity */
+.p-sell-input {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  font-size: 0.9rem;
+  margin-top: 6px;
+}
+
+/* button row */
+.p-modal-btns {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+/* confirm button */
+.p-confirm-btn {
+  background: var(--primary-blue-2);
+  color: #ffffff;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.45);
+  transition: transform 0.08s ease, box-shadow 0.08s ease, background 0.12s ease;
+}
+
+.p-confirm-btn:hover {
+  background: #1d4ed8;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(37, 99, 235, 0.55);
+}
+
+.p-confirm-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.35);
+}
+
+/* cancel button */
+.p-cancel-btn {
+  background: #e5e7eb;
+  color: #111827;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background 0.12s ease, transform 0.08s ease;
+}
+
+.p-cancel-btn:hover {
+  background: #d1d5db;
+  transform: translateY(-1px);
+}
+
+.p-cancel-btn:active {
+  transform: translateY(0);
+}
+
+/* ------------------------------------------------------------------
    Small / Responsive tweaks (global)
    ------------------------------------------------------------------ */
 @media (max-width: 920px) {
@@ -647,6 +788,7 @@ code {
     font-size: 1.6rem;
   }
 }
+
 /* ---------------- AlertBox (browser-like black dialog) ---------------- */
 .alertbox-portal {
   position: fixed;

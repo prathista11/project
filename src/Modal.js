@@ -7,39 +7,69 @@ import "./index.css";
  * Reusable Modal (portal).
  *
  * Props:
- * - open: boolean
- * - title: string (optional)
- * - children: React nodes (modal body)
- * - onClose: function
- * - modalId: string (optional) - used for aria-labelledby
+ * - open: boolean          → controls visibility
+ * - title: string?         → heading text
+ * - children: ReactNode    → content inside modal
+ * - onClose: () => void    → called when user closes
+ * - modalId: string?       → used for aria-labelledby
  */
-export default function Modal({ open, title, children, onClose, modalId = "modal" }) {
+export default function Modal({
+  open,
+  title,
+  children,
+  onClose,
+  modalId = "modal",
+}) {
+  // Lock scroll + close on Escape
   useEffect(() => {
     if (!open) return;
-    // Prevent background scrolling while modal is open
-    const original = document.body.style.overflow;
+
+    const originalOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
 
-    // Close on Escape
-    const onKey = (e) => {
+    const handleKeyDown = (e) => {
       if (e.key === "Escape") onClose?.();
     };
-    window.addEventListener("keydown", onKey);
+
+    window.addEventListener("keydown", handleKeyDown);
 
     return () => {
-      window.removeEventListener("keydown", onKey);
-      document.body.style.overflow = original;
+      window.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = originalOverflow;
     };
   }, [open, onClose]);
 
   if (!open) return null;
 
   return ReactDOM.createPortal(
-    <div className="ui-modal-overlay" role="dialog" aria-modal="true" aria-labelledby={`${modalId}-title`}>
-      <div className="ui-modal" tabIndex={-1}>
-        {title && <h3 id={`${modalId}-title`} className="ui-modal-title">{title}</h3>}
-        <div className="ui-modal-body">{children}</div>
-        <button className="ui-modal-close" onClick={onClose} aria-label="Close">✕</button>
+    <div
+      className="p-modal-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={`${modalId}-title`}
+      onClick={onClose} // close when clicking on backdrop
+    >
+      <div
+        className="p-modal"
+        tabIndex={-1}
+        onClick={(e) => e.stopPropagation()} // don't close when clicking inside
+      >
+        {title && (
+          <h3 id={`${modalId}-title`} className="p-modal-title">
+            {title}
+          </h3>
+        )}
+
+        <div className="p-modal-body">{children}</div>
+
+        <button
+          className="p-modal-close"
+          onClick={onClose}
+          aria-label="Close"
+          type="button"
+        >
+          ✕
+        </button>
       </div>
     </div>,
     document.body
