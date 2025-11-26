@@ -1,4 +1,4 @@
-// server.js (or your existing backend file)
+// server.js (backend)
 const express = require("express");
 const axios = require("axios");
 const cors = require("cors");
@@ -108,6 +108,7 @@ app.get("/api/portfolio", async (req, res) => {
  * POST /api/portfolio
  * Add a stock or increase quantity if it already exists.
  * Body: { symbol, companyName, price, quantity }
+ * Also tracks: invested = total money spent on this symbol.
  */
 app.post("/api/portfolio", async (req, res) => {
   try {
@@ -125,14 +126,22 @@ app.post("/api/portfolio", async (req, res) => {
 
     let portfolio = await readPortfolio();
 
-    // Try to find existing entry (case-insensitive by symbol)
     const existing = portfolio.find(
       (p) => (p.symbol || "").toUpperCase() === symbol
     );
 
     if (existing) {
-      // merge quantities and update latest price/companyName
-      existing.quantity = Number(existing.quantity || 0) + qty;
+      const oldQty = Number(existing.quantity || 0);
+      const oldInvested =
+        existing.invested != null
+          ? Number(existing.invested)
+          : (Number(existing.price) || 0) * oldQty;
+
+      const newQty = oldQty + qty;
+      const newInvested = oldInvested + price * qty;
+
+      existing.quantity = newQty;
+      existing.invested = newInvested;
       if (price) existing.price = price;
       if (companyName) existing.companyName = companyName;
     } else {
@@ -141,6 +150,7 @@ app.post("/api/portfolio", async (req, res) => {
         companyName,
         price,
         quantity: qty,
+        invested: price * qty,
       });
     }
 
@@ -157,12 +167,13 @@ app.post("/api/portfolio", async (req, res) => {
  * Increment (or decrement) quantity for a symbol.
  * Body: { quantity: number (positive to add, negative to subtract), price?, companyName? }
  * If quantity makes total <= 0, the item is removed.
+ * Also keeps invested consistent (average-cost for selling).
  */
 app.patch("/api/portfolio/:symbol", async (req, res) => {
   try {
     const symbol = (req.params.symbol || "").toUpperCase();
     const qtyDelta = Number(req.body.quantity);
-    const price =
+    const priceBody =
       req.body.price !== undefined ? Number(req.body.price) : undefined;
     const companyName = req.body.companyName;
 
@@ -178,28 +189,52 @@ app.patch("/api/portfolio/:symbol", async (req, res) => {
     );
 
     if (idx === -1) {
-      // If not found and qtyDelta > 0, create new
       if (qtyDelta > 0) {
+        const price = priceBody || 0;
         portfolio.push({
           symbol,
           companyName: companyName || "",
-          price: price || 0,
+          price,
           quantity: qtyDelta,
+          invested: price * qtyDelta,
         });
       } else {
         return res.status(404).json({ error: "Stock not found" });
       }
     } else {
-      // update existing
       const stock = portfolio[idx];
-      stock.quantity = Number(stock.quantity || 0) + qtyDelta;
-      if (price !== undefined && !isNaN(price)) stock.price = price;
-      if (companyName) stock.companyName = companyName;
+      const oldQty = Number(stock.quantity || 0);
+      const oldInvested =
+        stock.invested != null
+          ? Number(stock.invested)
+          : (Number(stock.price) || 0) * oldQty;
 
-      // remove if zero or negative
-      if (stock.quantity <= 0) {
-        portfolio.splice(idx, 1);
+      const priceToUse =
+        priceBody !== undefined && !isNaN(priceBody)
+          ? priceBody
+          : Number(stock.price) || 0;
+
+      if (qtyDelta > 0) {
+        const newQty = oldQty + qtyDelta;
+        const newInvested = oldInvested + priceToUse * qtyDelta;
+        stock.quantity = newQty;
+        stock.invested = newInvested;
+      } else if (qtyDelta < 0) {
+        const sellQty = Math.min(oldQty, Math.abs(qtyDelta));
+        const avgCost = oldQty > 0 ? oldInvested / oldQty : 0;
+        const newQty = oldQty - sellQty;
+        const newInvested = oldInvested - avgCost * sellQty;
+
+        if (newQty <= 0) {
+          portfolio.splice(idx, 1);
+        } else {
+          stock.quantity = newQty;
+          stock.invested = newInvested;
+        }
       }
+
+      if (!isNaN(priceToUse) && priceToUse) stock.price = priceToUse;
+      if (companyName) stock.companyName = companyName;
     }
 
     await writePortfolio(portfolio);
@@ -214,6 +249,7 @@ app.patch("/api/portfolio/:symbol", async (req, res) => {
  * POST /api/portfolio/sell
  * Sell a specific quantity of a stock
  * Body: { symbol, quantity }
+ * Also reduces invested using average cost.
  */
 app.post("/api/portfolio/sell", async (req, res) => {
   try {
@@ -235,17 +271,26 @@ app.post("/api/portfolio/sell", async (req, res) => {
     }
 
     const holding = portfolio[idx];
+    const qtyHeld = Number(holding.quantity || 0);
+    const invested =
+      holding.invested != null
+        ? Number(holding.invested)
+        : (Number(holding.price) || 0) * qtyHeld;
 
-    if (qty > holding.quantity) {
+    if (qty > qtyHeld) {
       return res
         .status(400)
-        .json({ error: `You only own ${holding.quantity} shares` });
+        .json({ error: `You only own ${qtyHeld} shares` });
     }
 
-    holding.quantity -= qty;
+    const avgCost = qtyHeld > 0 ? invested / qtyHeld : 0;
 
-    if (holding.quantity <= 0) {
+    if (qty === qtyHeld) {
+      // sold all
       portfolio.splice(idx, 1);
+    } else {
+      holding.quantity = qtyHeld - qty;
+      holding.invested = invested - avgCost * qty;
     }
 
     await writePortfolio(portfolio);

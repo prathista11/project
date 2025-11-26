@@ -110,34 +110,44 @@ function PortfolioPage() {
                 <th className="p-col">Symbol</th>
                 <th className="p-col">Price</th>
                 <th className="p-col">Quantity</th>
+                <th className="p-col">Total Invested</th>
                 <th className="p-col">Total Value</th>
                 <th className="p-col">Action</th>
               </tr>
             </thead>
             <tbody>
-              {portfolio.map((stock, index) => (
-                <tr key={index} className="portfolio-row">
-                  <td className="p-cell">{stock.companyName}</td>
-                  <td className="p-cell">{stock.symbol}</td>
-                  <td className="p-cell">${stock.price}</td>
-                  <td className="p-cell">{stock.quantity}</td>
-                  <td className="p-cell">
-                    $
-                    {(
-                      Number(stock.price || 0) * Number(stock.quantity || 0)
-                    ).toFixed(2)}
-                  </td>
-                  <td className="p-cell">
-                    <button
-                      type="button"
-                      className="p-sell-btn"
-                      onClick={() => openSellModal(stock)}
-                    >
-                      Sell
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              {portfolio.map((stock, index) => {
+                const qty = Number(stock.quantity || 0);
+                const priceNow = Number(stock.price || 0);
+
+                // invested is stored by backend; for old data, fall back to priceNow * qty
+                const invested =
+                  stock.invested != null
+                    ? Number(stock.invested)
+                    : priceNow * qty;
+
+                const totalValue = priceNow * qty;
+
+                return (
+                  <tr key={index} className="portfolio-row">
+                    <td className="p-cell">{stock.companyName}</td>
+                    <td className="p-cell">{stock.symbol}</td>
+                    <td className="p-cell">${priceNow.toFixed(2)}</td>
+                    <td className="p-cell">{qty}</td>
+                    <td className="p-cell">${invested.toFixed(2)}</td>
+                    <td className="p-cell">${totalValue.toFixed(2)}</td>
+                    <td className="p-cell">
+                      <button
+                        type="button"
+                        className="p-sell-btn"
+                        onClick={() => openSellModal(stock)}
+                      >
+                        Sell
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -148,9 +158,7 @@ function PortfolioPage() {
         open={sellOpen}
         onClose={closeSellModal}
         modalId="sell-modal"
-        title={
-          selectedStock ? `Sell ${selectedStock.symbol}` : "Sell Stock"
-        }
+        title={selectedStock ? `Sell ${selectedStock.symbol}` : "Sell Stock"}
       >
         {selectedStock && (
           <>
