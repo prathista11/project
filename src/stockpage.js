@@ -1,9 +1,14 @@
-// src/StockPage.js
 import React, { useEffect, useState } from "react";
-import axios from "axios";
-import { useNavigate } from "react-router-dom";
 import "./index.css";
-import AlertBox from "./AlertBox"; // <-- custom black alert component
+import AlertBox from "./AlertBox";
+import Modal from "./Modal";
+import {
+  buyStock,
+  getErrorMessage,
+  getPortfolio,
+  getQuotes,
+  getStock,
+} from "./apiClient";
 
 const STOCKS = [
   "AAPL",
@@ -18,6 +23,20 @@ const STOCKS = [
   "INTC",
 ];
 
+function formatNumber(value, digits = 2) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number.toFixed(digits) : "-";
+}
+
+function formatMarketCap(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? `$${number.toFixed(2)}B` : "-";
+}
+
+function getDetailValue(value) {
+  return value !== undefined && value !== null && value !== "" ? value : "-";
+}
+
 function StockPage() {
   const [stocks, setStocks] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -28,48 +47,42 @@ function StockPage() {
   });
   const [showModal, setShowModal] = useState(false);
   const [selectedStock, setSelectedStock] = useState(null);
-
-  // ✅ quantity = number, default 1
   const [quantity, setQuantity] = useState(1);
-
   const [lastUpdated, setLastUpdated] = useState(null);
   const [timeAgo, setTimeAgo] = useState("");
-  const [menuOpen, setMenuOpen] = useState(false);
-
-  // ✅ symbols that are *currently* in portfolio (from backend)
   const [boughtSymbols, setBoughtSymbols] = useState([]);
-
-  // AlertBox state
   const [alertOpen, setAlertOpen] = useState(false);
   const [alertMsg, setAlertMsg] = useState("");
   const [alertTitle, setAlertTitle] = useState("");
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState("");
+  const [detailSummary, setDetailSummary] = useState(null);
+  const [detailData, setDetailData] = useState(null);
 
-  const navigate = useNavigate();
-
-  // Fetch live stock data
   useEffect(() => {
     async function fetchStockData() {
       try {
-        const res = await axios.get(`/api/quotes?symbols=${STOCKS.join(",")}`);
-        setStocks(res.data);
+        const data = await getQuotes(STOCKS);
+        setStocks(data);
         setLoading(false);
         setLastUpdated(Date.now());
       } catch (err) {
         console.error("Error fetching stock data:", err);
         setLoading(false);
-        setAlertMsg("Failed to load stock data.");
+        setAlertMsg(getErrorMessage(err, "Failed to load stock data."));
         setAlertOpen(true);
       }
     }
 
     fetchStockData();
-    const interval = setInterval(fetchStockData, 60000); // 60s refresh
+    const interval = setInterval(fetchStockData, 60000);
     return () => clearInterval(interval);
   }, []);
 
-  // ⏱ Time-ago tracker
   useEffect(() => {
-    if (!lastUpdated) return;
+    if (!lastUpdated) return undefined;
+
     const interval = setInterval(() => {
       const seconds = Math.floor((Date.now() - lastUpdated) / 1000);
       setTimeAgo(
@@ -79,161 +92,150 @@ function StockPage() {
     return () => clearInterval(interval);
   }, [lastUpdated]);
 
-  // ✅ Load CURRENT portfolio from backend only (no localStorage)
   useEffect(() => {
     async function fetchPortfolio() {
       try {
-        const res = await axios.get("/api/portfolio");
-        const data = res.data || [];
-        const symbols = data.map((item) => item.symbol);
-        setBoughtSymbols(symbols);
+        const data = await getPortfolio();
+        setBoughtSymbols(data.map((item) => item.symbol));
       } catch (err) {
-        console.error("Error loading portfolio for highlighting", err);
+        if (err?.response?.status !== 401) {
+          console.error("Error loading portfolio for highlighting", err);
+        }
       }
     }
 
     fetchPortfolio();
   }, []);
 
-  // Sorting helpers
   function handleSort(key) {
-    let direction = "ascending";
-    if (sortConfig.key === key && sortConfig.direction === "ascending") {
-      direction = "descending";
-    }
+    const direction =
+      sortConfig.key === key && sortConfig.direction === "ascending"
+        ? "descending"
+        : "ascending";
     setSortConfig({ key, direction });
   }
 
   function sortedStocks(data) {
     if (!sortConfig.key) return data;
+
     return [...data].sort((a, b) => {
       const valA = a[sortConfig.key];
       const valB = b[sortConfig.key];
+
       if (valA === "N/A" || valB === "N/A") return 0;
-      if (typeof valA === "string") return valA.localeCompare(valB);
+      if (typeof valA === "string") {
+        return sortConfig.direction === "ascending"
+          ? valA.localeCompare(valB)
+          : valB.localeCompare(valA);
+      }
+
       return sortConfig.direction === "ascending" ? valA - valB : valB - valA;
     });
   }
 
-  // Modal handlers
   function handleBuyClick(stock) {
     setSelectedStock(stock);
-    setQuantity(1); // reset to 1
+    setQuantity(1);
     setShowModal(true);
   }
 
-  // Confirm buy
-  function confirmBuy() {
+  async function handleDetailsClick(stock) {
+    setDetailOpen(true);
+    setDetailLoading(true);
+    setDetailError("");
+    setDetailSummary(stock);
+    setDetailData(null);
+
+    try {
+      const data = await getStock(stock.symbol);
+      setDetailData(data);
+    } catch (err) {
+      console.error("Failed to load stock details", err);
+      setDetailError(getErrorMessage(err, "Failed to load stock details."));
+    } finally {
+      setDetailLoading(false);
+    }
+  }
+
+  function handleDetailBuy() {
+    const quote = detailData?.quote || {};
+    const profile = detailData?.profile || {};
+    const stock = {
+      ...detailSummary,
+      symbol: detailSummary?.symbol || profile.ticker,
+      name: profile.name || detailSummary?.name || detailSummary?.symbol,
+      current: quote.c ?? detailSummary?.current,
+    };
+
+    setDetailOpen(false);
+    handleBuyClick(stock);
+  }
+
+  async function confirmBuy() {
     const qty = parseInt(quantity, 10);
 
-    if (!qty || qty <= 0) {
+    if (!selectedStock || !qty || qty <= 0) {
       setAlertMsg("Please enter a valid quantity.");
       setAlertTitle("");
       setAlertOpen(true);
       return;
     }
 
-    const payload = {
-      symbol: selectedStock.symbol,
-      companyName: selectedStock.name,
-      price: selectedStock.current,
-      quantity: qty,
-    };
-
-    axios
-      .post("/api/portfolio", payload)
-      .then(() => {
-        // ✅ Update boughtSymbols based on this buy
-        setBoughtSymbols((prev) =>
-          prev.includes(selectedStock.symbol)
-            ? prev
-            : [...prev, selectedStock.symbol]
-        );
-
-        setAlertMsg(
-          `${qty} shares of ${selectedStock.symbol} added to portfolio!`
-        );
-        setAlertTitle("");
-        setAlertOpen(true);
-
-        setShowModal(false);
-      })
-      .catch((err) => {
-        console.error(err);
-        setAlertMsg("Failed to add to portfolio.");
-        setAlertTitle("");
-        setAlertOpen(true);
+    try {
+      await buyStock({
+        symbol: selectedStock.symbol,
+        companyName: selectedStock.name,
+        price: selectedStock.current,
+        quantity: qty,
       });
+      setBoughtSymbols((prev) =>
+        prev.includes(selectedStock.symbol)
+          ? prev
+          : [...prev, selectedStock.symbol]
+      );
+      setAlertMsg(`${qty} shares of ${selectedStock.symbol} added to portfolio.`);
+      setAlertTitle("");
+      setAlertOpen(true);
+      setShowModal(false);
+    } catch (err) {
+      console.error(err);
+      setAlertMsg(
+        err?.response?.status === 401
+          ? "Please log in before buying stocks."
+          : getErrorMessage(err, "Failed to add to portfolio.")
+      );
+      setAlertTitle("");
+      setAlertOpen(true);
+    }
   }
 
   const filtered = sortedStocks(
     stocks.filter(
-      (s) =>
-        s.symbol.toLowerCase().includes(search.toLowerCase()) ||
-        s.name.toLowerCase().includes(search.toLowerCase())
+      (stock) =>
+        stock.symbol.toLowerCase().includes(search.toLowerCase()) ||
+        stock.name.toLowerCase().includes(search.toLowerCase())
     )
   );
 
-  if (loading)
+  if (loading) {
     return <h2 className="stock-loading">Loading live stock data...</h2>;
+  }
 
   return (
     <div className="stock-page">
-      {/* Hamburger */}
-      <button
-        className="stock-hamburger"
-        onClick={() => setMenuOpen((s) => !s)}
-        aria-label="Toggle menu"
-      >
-        <span className="stock-bar" />
-        <span className="stock-bar" />
-        <span className="stock-bar" />
-      </button>
-
-      {/* Sidebar */}
-      <aside className={`stock-sidebar ${menuOpen ? "open" : ""}`}>
-        <h2 className="stock-menuTitle">📈 Dashboard Menu</h2>
-        <button
-          className="stock-menuBtn"
-          onClick={() => {
-            setMenuOpen(false);
-            navigate("/stocks");
-          }}
-        >
-          💹 Stocks
-        </button>
-        <button
-          className="stock-menuBtn"
-          onClick={() => {
-            setMenuOpen(false);
-            navigate("/portfolio");
-          }}
-        >
-          💼 Portfolio
-        </button>
-      </aside>
-
-      {menuOpen && (
-        <div
-          className="stock-overlay"
-          onClick={() => setMenuOpen(false)}
-        />
-      )}
-
-      {/* Main container */}
       <div className="stock-container">
-        <h1 className="stock-title">💹 Global Stock Market Dashboard</h1>
+        <h1 className="stock-title">Global Stock Market Dashboard</h1>
         <p className="stock-subtitle">Live Data | Auto-refresh every 1 minute</p>
         {lastUpdated && (
-          <p className="stock-lastUpdated">🔄 Last updated: {timeAgo}</p>
+          <p className="stock-lastUpdated">Last updated: {timeAgo}</p>
         )}
 
         <div className="stock-searchBarContainer">
           <input
             type="text"
-            placeholder="🔍 Search by company or symbol..."
+            placeholder="Search by company or symbol..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(event) => setSearch(event.target.value)}
             className="stock-searchBar"
           />
         </div>
@@ -253,16 +255,14 @@ function StockPage() {
                   "volume",
                   "marketCap",
                   "pe",
-                  "buy",
+                  "action",
                 ].map((key) => (
                   <th
                     key={key}
-                    onClick={() => key !== "buy" && handleSort(key)}
-                    className={`stock-th ${
-                      key !== "buy" ? "sortable" : ""
-                    }`}
-                    role={key !== "buy" ? "button" : undefined}
-                    tabIndex={key !== "buy" ? 0 : undefined}
+                    onClick={() => key !== "action" && handleSort(key)}
+                    className={`stock-th ${key !== "action" ? "sortable" : ""}`}
+                    role={key !== "action" ? "button" : undefined}
+                    tabIndex={key !== "action" ? 0 : undefined}
                     aria-label={key}
                   >
                     {key === "symbol"
@@ -288,64 +288,72 @@ function StockPage() {
                       : "Action"}
                     {sortConfig.key === key
                       ? sortConfig.direction === "ascending"
-                        ? " ▲"
-                        : " ▼"
+                        ? " ^"
+                        : " v"
                       : ""}
                   </th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {filtered.map((s, i) => (
+              {filtered.map((stock, index) => (
                 <tr
-                  key={s.symbol}
+                  key={stock.symbol}
                   className={`stock-row ${
-                    boughtSymbols.includes(s.symbol) ? "bought" : ""
-                  } ${i % 2 === 0 ? "even" : "odd"}`}
+                    boughtSymbols.includes(stock.symbol) ? "bought" : ""
+                  } ${index % 2 === 0 ? "even" : "odd"}`}
                 >
-                  <td className="stock-td">{s.symbol}</td>
-                  <td className="stock-td stock-name">{s.name}</td>
+                  <td className="stock-td">{stock.symbol}</td>
+                  <td className="stock-td stock-name">{stock.name}</td>
                   <td className="stock-td stock-current">
-                    {s.current ? s.current.toFixed(2) : "—"}
+                    {formatNumber(stock.current)}
                   </td>
                   <td
                     className={`stock-td stock-change ${
-                      s.change >= 0 ? "positive" : "negative"
+                      stock.change >= 0 ? "positive" : "negative"
                     }`}
                   >
-                    {s.change ? s.change.toFixed(2) : "—"}
+                    {formatNumber(stock.change)}
                   </td>
                   <td
                     className={`stock-td stock-percent ${
-                      s.percent >= 0 ? "positive" : "negative"
+                      stock.percent >= 0 ? "positive" : "negative"
                     }`}
                   >
-                    {s.percent ? s.percent.toFixed(2) : "—"}%
+                    {formatNumber(stock.percent)}%
+                  </td>
+                  <td className="stock-td">{formatNumber(stock.high)}</td>
+                  <td className="stock-td">{formatNumber(stock.low)}</td>
+                  <td className="stock-td">
+                    {stock.volume !== "N/A"
+                      ? Number(stock.volume).toLocaleString()
+                      : "-"}
                   </td>
                   <td className="stock-td">
-                    {s.high ? s.high.toFixed(2) : "—"}
+                    {stock.marketCap !== "N/A" ? `${stock.marketCap}B` : "-"}
                   </td>
                   <td className="stock-td">
-                    {s.low ? s.low.toFixed(2) : "—"}
+                    {stock.pe !== "N/A" ? formatNumber(stock.pe) : "-"}
                   </td>
                   <td className="stock-td">
-                    {s.volume !== "N/A" ? s.volume.toLocaleString() : "—"}
-                  </td>
-                  <td className="stock-td">
-                    {s.marketCap !== "N/A" ? s.marketCap + "B" : "—"}
-                  </td>
-                  <td className="stock-td">
-                    {s.pe !== "N/A" ? s.pe.toFixed(2) : "—"}
-                  </td>
-                  <td className="stock-td">
-                    <button
-                      className="stock-buyBtn"
-                      onClick={() => handleBuyClick(s)}
-                    >
-                      {boughtSymbols.includes(s.symbol)
-                        ? "buy again"
-                        : "Buy"}
-                    </button>
+                    <div className="stock-actionGroup">
+                      <button
+                        type="button"
+                        className="stock-detailBtn"
+                        onClick={() => handleDetailsClick(stock)}
+                      >
+                        Details
+                      </button>
+                      <button
+                        type="button"
+                        className="stock-buyBtn"
+                        onClick={() => handleBuyClick(stock)}
+                      >
+                        {boughtSymbols.includes(stock.symbol)
+                          ? "Buy again"
+                          : "Buy"}
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -354,7 +362,6 @@ function StockPage() {
         </div>
       </div>
 
-      {/* Buy Modal */}
       {showModal && (
         <div className="stock-modalOverlay">
           <div
@@ -374,23 +381,16 @@ function StockPage() {
               value={quantity}
               min={1}
               step={1}
-              onChange={(e) => {
-                const val = parseInt(e.target.value, 10);
-                if (isNaN(val) || val <= 0) {
-                  setQuantity(1);
-                } else {
-                  setQuantity(val);
-                }
+              onChange={(event) => {
+                const val = parseInt(event.target.value, 10);
+                setQuantity(Number.isNaN(val) || val <= 0 ? 1 : val);
               }}
               className="stock-input"
               aria-label="Quantity"
             />
 
             <div className="stock-modalBtns" style={{ marginTop: 12 }}>
-              <button
-                className="stock-confirmBtn"
-                onClick={confirmBuy}
-              >
+              <button className="stock-confirmBtn" onClick={confirmBuy}>
                 Confirm
               </button>
               <button
@@ -403,6 +403,119 @@ function StockPage() {
           </div>
         </div>
       )}
+
+      <Modal
+        open={detailOpen}
+        onClose={() => setDetailOpen(false)}
+        modalId="stock-detail-modal"
+        title={
+          detailSummary
+            ? `${detailSummary.symbol} Details`
+            : "Stock Details"
+        }
+      >
+        {detailLoading ? (
+          <p className="stock-detail-status">Loading stock details...</p>
+        ) : detailError ? (
+          <p className="stock-detail-error">{detailError}</p>
+        ) : (
+          (() => {
+            const quote = detailData?.quote || {};
+            const profile = detailData?.profile || {};
+            const current = quote.c ?? detailSummary?.current;
+            const change = quote.d ?? detailSummary?.change;
+            const percent = quote.dp ?? detailSummary?.percent;
+            const high = quote.h ?? detailSummary?.high;
+            const low = quote.l ?? detailSummary?.low;
+            const marketCap =
+              profile.marketCapitalization ?? detailSummary?.marketCap;
+            const companyName =
+              profile.name || detailSummary?.name || detailSummary?.symbol;
+            const priceTrend =
+              Number(change) > 0
+                ? "positive"
+                : Number(change) < 0
+                ? "negative"
+                : "neutral";
+
+            return (
+              <div className="stock-detail">
+                <div>
+                  <p className="stock-detail-company">{companyName}</p>
+                  <p className="stock-detail-symbol">
+                    {getDetailValue(profile.exchange)} |{" "}
+                    {getDetailValue(profile.currency)}
+                  </p>
+                </div>
+
+                <div className="stock-detail-priceRow">
+                  <span className="stock-detail-price">
+                    ${formatNumber(current)}
+                  </span>
+                  <span className={`stock-detail-change ${priceTrend}`}>
+                    {formatNumber(change)} ({formatNumber(percent)}%)
+                  </span>
+                </div>
+
+                <div className="stock-detail-grid">
+                  <div>
+                    <span>High</span>
+                    <b>${formatNumber(high)}</b>
+                  </div>
+                  <div>
+                    <span>Low</span>
+                    <b>${formatNumber(low)}</b>
+                  </div>
+                  <div>
+                    <span>Market Cap</span>
+                    <b>{formatMarketCap(marketCap)}</b>
+                  </div>
+                  <div>
+                    <span>P/E Ratio</span>
+                    <b>{formatNumber(detailSummary?.pe)}</b>
+                  </div>
+                  <div>
+                    <span>Country</span>
+                    <b>{getDetailValue(profile.country)}</b>
+                  </div>
+                  <div>
+                    <span>Industry</span>
+                    <b>{getDetailValue(profile.finnhubIndustry)}</b>
+                  </div>
+                </div>
+
+                {profile.weburl && (
+                  <a
+                    className="stock-detail-link"
+                    href={profile.weburl}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Company website
+                  </a>
+                )}
+
+                <div className="stock-detail-actions">
+                  <button
+                    type="button"
+                    className="stock-confirmBtn"
+                    onClick={handleDetailBuy}
+                  >
+                    Buy
+                  </button>
+                  <button
+                    type="button"
+                    className="stock-cancelBtn"
+                    onClick={() => setDetailOpen(false)}
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            );
+          })()
+        )}
+      </Modal>
 
       <AlertBox
         open={alertOpen}

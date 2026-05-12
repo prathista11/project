@@ -1,5 +1,5 @@
 /* ===================================================================
-   index.css — Consolidated styles for App, Navbar, StockPage, Portfolio
+   index.css - Consolidated styles for App, Navbar, StockPage, Portfolio
    ===================================================================
    - Contains: reset/base, app layout, navbar, nav-component, stock,
      portfolio styles and responsive tweaks.
@@ -74,13 +74,15 @@ code {
 }
 
 .menu-button {
-  background: none;
-  border: none;
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.2);
   color: white;
-  font-size: 28px;
+  font-size: 14px;
+  font-weight: 700;
   cursor: pointer;
   margin-right: 20px;
-  padding: 6px 10px;
+  padding: 8px 12px;
+  border-radius: 8px;
 }
 
 .nav-title {
@@ -133,6 +135,15 @@ code {
   outline: none;
 }
 
+.nav-button {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  font-family: inherit;
+  cursor: pointer;
+}
+
 /* Main content area (shifted when sidebar open) */
 .content {
   padding-top: 85px; /* leaves space for navbar */
@@ -144,85 +155,69 @@ code {
   margin-left: 320px;
 }
 
-/* ------------------------------------------------------------------
-   Navbar component (Navbar.js) - prefixed nav- to avoid collisions
-   ------------------------------------------------------------------ */
-.nav-hamburger {
-  font-size: 26px;
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  color: white;
-  position: absolute;
-  top: 15px;
-  left: 20px;
-  z-index: 1000;
-  display: inline-flex;
-  flex-direction: column;
-  justify-content: center;
+.auth-page {
+  min-height: calc(100vh - 85px);
+  display: flex;
   align-items: center;
-  padding: 6px;
+  justify-content: center;
+  padding: 28px;
+  background: #f2f5f9;
 }
 
-/* small bar lines inside hamburger */
-.nav-bar {
-  display: block;
-  width: 30px;
-  height: 3px;
-  background-color: var(--primary-blue);
-  margin: 6px 0;
-  border-radius: 4px;
-  transition: transform 0.2s ease, opacity 0.2s ease;
+.auth-panel {
+  width: min(420px, 100%);
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12);
+  padding: 28px;
 }
 
-/* Sidebar base (hidden by transform) */
-.nav-sidebar {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 230px;
-  height: 100%;
-  background-color: var(--primary-blue);
-  color: white;
-  padding: 20px;
-  box-shadow: 3px 0 10px rgba(0,0,0,0.3);
-  transform: translateX(-100%);
-  transition: transform 0.3s ease;
-  z-index: 1000;
+.auth-panel h1 {
+  margin: 0 0 18px;
+  color: var(--primary-blue);
+  font-size: 1.6rem;
+}
+
+.auth-field {
   display: flex;
   flex-direction: column;
-  gap: 20px;
-}
-
-.nav-sidebar.open {
-  transform: translateX(0);
-}
-
-.nav-menuTitle {
-  margin-top: 10px;
-  font-size: 1.3rem;
-  border-bottom: 2px solid #93c5fd;
-  padding-bottom: 10px;
-}
-
-.nav-menuBtn {
-  background: white;
-  color: var(--primary-blue);
+  gap: 6px;
+  color: #1f2937;
   font-weight: 600;
-  border: none;
+  margin-bottom: 14px;
+}
+
+.auth-field input {
+  border: 1px solid #cbd5e1;
   border-radius: 8px;
-  padding: 10px;
+  padding: 10px 12px;
+  font: inherit;
+}
+
+.auth-submit {
+  width: 100%;
+  background: var(--primary-blue-2);
+  color: #ffffff;
+  border: 0;
+  border-radius: 8px;
+  padding: 11px 14px;
+  font-weight: 700;
   cursor: pointer;
 }
 
-.nav-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0,0,0,0.3);
-  z-index: 999;
+.auth-submit:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.auth-error {
+  color: #b91c1c;
+  font-weight: 600;
+}
+
+.auth-switch {
+  margin: 16px 0 0;
+  color: #4b5563;
 }
 
 /* ------------------------------------------------------------------
@@ -253,80 +248,6 @@ code {
   margin-top: 200px;
   color: var(--primary-blue);
   font-size: 1.5rem;
-}
-
-/* Hamburger + sidebar (namespaced) */
-.stock-hamburger {
-  position: fixed;
-  top: 20px;
-  left: 20px;
-  cursor: pointer;
-  z-index: 1001;
-  background: transparent;
-  border: none;
-  display: inline-flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 6px;
-}
-
-.stock-bar {
-  width: 30px;
-  height: 3px;
-  background-color: var(--primary-blue);
-  border-radius: 4px;
-}
-
-/* Sidebar */
-.stock-sidebar {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 230px;
-  height: 100%;
-  background: rgba(30,58,138,0.95);
-  color: white;
-  padding: 20px;
-  box-shadow: 3px 0 10px rgba(0,0,0,0.25);
-  backdrop-filter: blur(6px);
-  transform: translateX(-100%);
-  transition: transform 0.28s ease;
-  z-index: 1000;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.stock-sidebar.open {
-  transform: translateX(0);
-}
-
-.stock-menuTitle {
-  font-size: 1.15rem;
-  border-bottom: 2px solid #93c5fd;
-  padding-bottom: 10px;
-  margin-top: 6px;
-}
-
-.stock-menuBtn {
-  background: white;
-  color: var(--primary-blue);
-  font-weight: 600;
-  border: none;
-  border-radius: 8px;
-  padding: 10px;
-  cursor: pointer;
-}
-
-/* Overlay for menu */
-.stock-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0,0,0,0.3);
-  z-index: 999;
 }
 
 /* Title/subtitle */
@@ -433,9 +354,31 @@ code {
   font-weight: 700;
 }
 
+.neutral {
+  color: #64748b;
+  font-weight: 700;
+}
+
+.stock-actionGroup {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  min-width: 150px;
+}
+
 /* Buy button */
 .stock-buyBtn {
   background-color: var(--accent);
+  color: white;
+  border: none;
+  padding: 6px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.stock-detailBtn {
+  background-color: #334155;
   color: white;
   border: none;
   padding: 6px 10px;
@@ -499,6 +442,99 @@ code {
   cursor: pointer;
 }
 
+.stock-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.stock-detail-company {
+  margin: 0 24px 2px 0;
+  color: #111827;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.stock-detail-symbol {
+  margin: 0;
+  color: #475569;
+  font-size: 0.85rem;
+}
+
+.stock-detail-priceRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  border-top: 1px solid rgba(15, 23, 42, 0.14);
+  border-bottom: 1px solid rgba(15, 23, 42, 0.14);
+  padding: 12px 0;
+}
+
+.stock-detail-price {
+  color: var(--primary-blue);
+  font-size: 1.6rem;
+  font-weight: 700;
+}
+
+.stock-detail-change {
+  font-size: 0.95rem;
+}
+
+.stock-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.stock-detail-grid div {
+  background: rgba(255, 255, 255, 0.45);
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.stock-detail-grid span {
+  display: block;
+  color: #475569;
+  font-size: 0.76rem;
+  margin-bottom: 4px;
+}
+
+.stock-detail-grid b {
+  display: block;
+  color: #111827;
+  font-size: 0.9rem;
+  overflow-wrap: anywhere;
+}
+
+.stock-detail-link {
+  color: var(--primary-blue);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.stock-detail-link:hover {
+  text-decoration: underline;
+}
+
+.stock-detail-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 2px;
+}
+
+.stock-detail-status,
+.stock-detail-error {
+  margin: 0;
+  font-weight: 600;
+}
+
+.stock-detail-error {
+  color: #b91c1c;
+}
+
 /* ------------------------------------------------------------------
    Portfolio Page styles (portfolio- prefix)
    ------------------------------------------------------------------ */
@@ -521,6 +557,13 @@ code {
   text-align: center;
   color: #555;
   margin-top: 18px;
+}
+
+.portfolio-error {
+  color: #b91c1c;
+  font-weight: 600;
+  text-align: center;
+  margin: 10px 0;
 }
 
 /* Table wrapper to allow border-radius and overflow */
@@ -562,6 +605,10 @@ code {
 
 .portfolio-row:last-child {
   border-bottom: none;
+}
+
+.p-pl-value {
+  white-space: nowrap;
 }
 
 /* Sell button */
@@ -738,6 +785,14 @@ code {
     padding: 8px;
     font-size: 14px;
   }
+
+  .stock-actionGroup {
+    min-width: 132px;
+  }
+
+  .stock-detail-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 480px) {
@@ -757,31 +812,7 @@ code {
   }
 
   .menu-button, .menu-button:focus {
-    font-size: 24px;
-  }
-
-  .nav-hamburger {
-    top: 12px;
-    left: 12px;
-  }
-
-  .nav-bar {
-    width: 26px;
-    height: 3px;
-  }
-
-  .stock-sidebar {
-    width: 200px;
-  }
-
-  .stock-hamburger {
-    top: 12px;
-    left: 12px;
-  }
-
-  .stock-bar {
-    width: 26px;
-    height: 3px;
+    font-size: 13px;
   }
 
   .stock-title {

@@ -16,6 +16,11 @@
   },
   "scripts": {
     "start": "react-scripts start",
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down",
+    "start:backend": "npm --prefix backend start",
+    "dev:backend": "npm --prefix backend run dev",
+    "dev:frontend": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"

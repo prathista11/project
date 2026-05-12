@@ -1,26 +1,47 @@
 import React, { useEffect, useState } from "react";
 import "./index.css";
-import Modal from "./Modal"; // adjust the path if needed
+import Modal from "./Modal";
+import { getErrorMessage, getPortfolio, getStock, sellStock } from "./apiClient";
+
+function formatMoney(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? `$${number.toFixed(2)}` : "-";
+}
+
+function formatSignedMoney(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return "-";
+  const sign = number > 0 ? "+" : number < 0 ? "-" : "";
+  return `${sign}$${Math.abs(number).toFixed(2)}`;
+}
+
+function formatSignedPercent(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return "-";
+  const sign = number > 0 ? "+" : "";
+  return `${sign}${number.toFixed(2)}%`;
+}
+
+function trendClass(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number) || number === 0) return "neutral";
+  return number > 0 ? "positive" : "negative";
+}
 
 function PortfolioPage() {
   const [portfolio, setPortfolio] = useState([]);
-
-  // Sell modal state
   const [sellOpen, setSellOpen] = useState(false);
   const [selectedStock, setSelectedStock] = useState(null);
   const [sellQty, setSellQty] = useState(1);
+  const [error, setError] = useState("");
 
-  // Load portfolio and refresh prices
   useEffect(() => {
     const fetchPortfolio = async () => {
       try {
-        const res = await fetch("/api/portfolio");
-        const savedPortfolio = await res.json();
-
+        const savedPortfolio = await getPortfolio();
         const updated = await Promise.all(
           savedPortfolio.map(async (stock) => {
-            const r = await fetch(`/api/stock/${stock.symbol}`);
-            const data = await r.json();
+            const data = await getStock(stock.symbol);
             return {
               ...stock,
               price: data.quote?.c ?? stock.price ?? 0,
@@ -28,8 +49,10 @@ function PortfolioPage() {
           })
         );
         setPortfolio(updated);
+        setError("");
       } catch (err) {
         console.error("Failed to load portfolio", err);
+        setError(getErrorMessage(err, "Failed to load portfolio."));
       }
     };
 
@@ -38,14 +61,12 @@ function PortfolioPage() {
     return () => clearInterval(interval);
   }, []);
 
-  // Open sell modal
   const openSellModal = (stock) => {
     setSelectedStock(stock);
     setSellQty(1);
     setSellOpen(true);
   };
 
-  // Confirm sell
   const confirmSell = async () => {
     if (!selectedStock) return;
 
@@ -53,38 +74,23 @@ function PortfolioPage() {
     const qty = Number(sellQty);
 
     if (!qty || qty <= 0) {
-      alert("Please enter a valid quantity to sell.");
+      setError("Please enter a valid quantity to sell.");
       return;
     }
     if (qty > maxQty) {
-      alert(`You only own ${maxQty} shares of ${selectedStock.symbol}.`);
+      setError(`You only own ${maxQty} shares of ${selectedStock.symbol}.`);
       return;
     }
 
     try {
-      const res = await fetch("/api/portfolio/sell", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          symbol: selectedStock.symbol,
-          quantity: qty,
-        }),
-      });
-
-      if (!res.ok) {
-        const errText = await res.text();
-        console.error("Sell failed:", errText);
-        alert("Failed to sell shares.");
-        return;
-      }
-
-      const updated = await res.json();
+      const updated = await sellStock(selectedStock.symbol, qty);
       setPortfolio(updated);
       setSellOpen(false);
       setSelectedStock(null);
+      setError("");
     } catch (err) {
       console.error("Failed to sell", err);
-      alert("Failed to sell due to a network error.");
+      setError(getErrorMessage(err, "Failed to sell shares."));
     }
   };
 
@@ -95,11 +101,12 @@ function PortfolioPage() {
 
   return (
     <div className="portfolio-container">
-      <h1 className="portfolio-title">📊 My Portfolio (Live)</h1>
+      <h1 className="portfolio-title">My Portfolio (Live)</h1>
+      {error && <p className="portfolio-error">{error}</p>}
 
       {portfolio.length === 0 ? (
         <p className="portfolio-empty">
-          No stocks yet! Go buy some from the Stock page 🚀
+          No stocks yet. Go buy some from the Stock page.
         </p>
       ) : (
         <div className="portfolio-table-wrap">
@@ -112,6 +119,8 @@ function PortfolioPage() {
                 <th className="p-col">Quantity</th>
                 <th className="p-col">Total Invested</th>
                 <th className="p-col">Total Value</th>
+                <th className="p-col">P/L ($)</th>
+                <th className="p-col">P/L (%)</th>
                 <th className="p-col">Action</th>
               </tr>
             </thead>
@@ -119,23 +128,28 @@ function PortfolioPage() {
               {portfolio.map((stock, index) => {
                 const qty = Number(stock.quantity || 0);
                 const priceNow = Number(stock.price || 0);
-
-                // invested is stored by backend; for old data, fall back to priceNow * qty
                 const invested =
-                  stock.invested != null
-                    ? Number(stock.invested)
-                    : priceNow * qty;
-
+                  stock.invested != null ? Number(stock.invested) : priceNow * qty;
                 const totalValue = priceNow * qty;
+                const profitLoss = totalValue - invested;
+                const profitLossPercent =
+                  invested > 0 ? (profitLoss / invested) * 100 : 0;
+                const profitLossClass = trendClass(profitLoss);
 
                 return (
-                  <tr key={index} className="portfolio-row">
+                  <tr key={stock.symbol || index} className="portfolio-row">
                     <td className="p-cell">{stock.companyName}</td>
                     <td className="p-cell">{stock.symbol}</td>
-                    <td className="p-cell">${priceNow.toFixed(2)}</td>
+                    <td className="p-cell">{formatMoney(priceNow)}</td>
                     <td className="p-cell">{qty}</td>
-                    <td className="p-cell">${invested.toFixed(2)}</td>
-                    <td className="p-cell">${totalValue.toFixed(2)}</td>
+                    <td className="p-cell">{formatMoney(invested)}</td>
+                    <td className="p-cell">{formatMoney(totalValue)}</td>
+                    <td className={`p-cell p-pl-value ${profitLossClass}`}>
+                      {formatSignedMoney(profitLoss)}
+                    </td>
+                    <td className={`p-cell p-pl-value ${profitLossClass}`}>
+                      {formatSignedPercent(profitLossPercent)}
+                    </td>
                     <td className="p-cell">
                       <button
                         type="button"
@@ -153,7 +167,6 @@ function PortfolioPage() {
         </div>
       )}
 
-      {/* Sell Modal using reusable Modal component */}
       <Modal
         open={sellOpen}
         onClose={closeSellModal}
@@ -173,9 +186,9 @@ function PortfolioPage() {
               max={selectedStock.quantity}
               step={1}
               value={sellQty}
-              onChange={(e) => {
-                const val = parseInt(e.target.value, 10);
-                if (isNaN(val) || val <= 0) {
+              onChange={(event) => {
+                const val = parseInt(event.target.value, 10);
+                if (Number.isNaN(val) || val <= 0) {
                   setSellQty(1);
                 } else if (val > Number(selectedStock.quantity)) {
                   setSellQty(selectedStock.quantity);
